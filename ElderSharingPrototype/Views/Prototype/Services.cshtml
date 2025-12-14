@@ -1,0 +1,129 @@
+﻿@using Microsoft.AspNetCore.Html
+
+@{
+    ViewData["Title"] = "שירותים";
+    var level = (string)(ViewBag.Level ?? "A"); // A / B / C
+    var last4 = (string)(ViewBag.CreditCardLast4 ?? "");
+    var maskedCard = string.IsNullOrWhiteSpace(last4) ? "" : "כרטיס: ****" + last4;
+    string levelText = level == "A" ? "רמה 1 – פרטיות גבוהה" :
+                       level == "B" ? "רמה 2 – שיתוף בינוני" :
+                                      "רמה 3 – שיתוף גבוה";
+}
+
+<div class="container py-4" style="max-width: 1100px;">
+
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+        <div>
+            <h1 class="mb-2">מסך שירותים</h1>
+            <p class="text-muted mb-0">
+                רמת השיתוף שנבחרה: <strong>@levelText</strong>
+            </p>
+        </div>
+
+        <a class="btn btn-outline-primary" href="/Prototype/Choose">שינוי רמת שיתוף</a>
+    </div>
+
+    <hr class="my-4" />
+
+    <!-- כרטיסי שירותים -->
+    <div class="row g-3">
+
+        <!-- שירותים בסיסיים (זמינים בכל הרמות) -->
+        @ServiceCard("חדשות", "צפייה בכותרות ועדכונים יומיים.", "📰", true, "#")
+        @ServiceCard("תזכורות כלליות", "הגדרת תזכורת יומית פשוטה.", "⏰", true, "#")
+        @ServiceCard("לוח שנה בסיסי", "הצגת אירועים ותזכורות.", "📅", true, "#")
+        @ServiceCard("מזג אוויר", "תחזית יומית לפי אזור מגורים.", "☁️", true, "#")
+
+        <!-- שירותים רפואיים: זמינים ברמה B ומעלה -->
+        @{
+            bool medicalAllowed = (level == "B" || level == "C");
+        }
+        @ServiceCard("תזכורות תרופות", "התראות לתרופות לפי שעה.", "💊", medicalAllowed, "B")
+        @ServiceCard("תזכורות תורים", "תזכורת לפני תור בקופת חולים.", "🏥", medicalAllowed, "B")
+
+        <!-- שירותים בנקאיים: זמינים רק ברמה C -->
+        @{
+            bool bankAllowed = (level == "C");
+        }
+        @ServiceCard("בנק – יתרה",
+        "הצגת יתרה (דמו לקריאה בלבד)." + (bankAllowed && !string.IsNullOrWhiteSpace(maskedCard) ? $"<br/><small class='text-muted'>{maskedCard}</small>" : ""),
+                "🏦", bankAllowed, "C")
+
+        @ServiceCard("בנק – תנועות אחרונות",
+                "תנועות אחרונות (דמו)." + (bankAllowed && !string.IsNullOrWhiteSpace(maskedCard) ? $"<br/><small class='text-muted'>{maskedCard}</small>" : ""),
+                "💳", bankAllowed, "C")
+
+
+        <!-- שירות מצוקה: רמה C -->
+        @ServiceCard("מצוקה", "כפתור מצוקה והתרעה (דמו).", "🚨", bankAllowed, "C")
+
+    </div>
+</div>
+
+<!-- Modal לשדרוג רמת שיתוף -->
+<div class="modal fade" id="upgradeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">נדרשת רמת שיתוף גבוהה יותר</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="סגור"></button>
+            </div>
+            <div class="modal-body">
+                כדי להשתמש בשירות <strong id="blockedServiceName"></strong> נדרשת רמת שיתוף גבוהה יותר.
+                <br />
+                האם תרצה לשדרג?
+            </div>
+            <div class="modal-footer">
+                <form method="post" action="/Prototype/UpgradeLevel" class="m-0">
+                    <input type="hidden" name="targetLevel" id="targetLevel" value="B" />
+                    <button type="submit" class="btn btn-primary">כן, שדרג</button>
+                </form>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">לא, השאר</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function openUpgradeModal(serviceName, targetLevel) {
+            document.getElementById('blockedServiceName').innerText = serviceName;
+            document.getElementById('targetLevel').value = targetLevel;
+
+            const modalEl = document.getElementById('upgradeModal');
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+    </script>
+}
+
+@functions {
+    // hrefOrTarget:
+    //  - אם allowed=true, זה href רגיל ("#")
+    //  - אם allowed=false, זה יעד שדרוג: "B" או "C"
+    public IHtmlContent ServiceCard(string title, string desc, string icon, bool allowed, string hrefOrTarget)
+    {
+        var btnText = allowed ? "פתח שירות" : "שירות חסום";
+        var btnClass = allowed ? "btn btn-primary w-100" : "btn btn-outline-secondary w-100";
+
+        // אם חסום – נפתח מודאל עם שם שירות והרמה הנדרשת
+        var action = allowed
+            ? $"<a class='{btnClass}' href='{hrefOrTarget}'>" + btnText + "</a>"
+            : $"<button type='button' class='{btnClass}' onclick=\"openUpgradeModal('{title}','{hrefOrTarget}')\">" + btnText + "</button>";
+
+        var html = $@"
+<div class='col-12 col-md-6 col-lg-4'>
+  <div class='card h-100 shadow-sm'>
+    <div class='card-body d-flex flex-column'>
+      <div class='d-flex align-items-center gap-2 mb-2'>
+        <div style='font-size: 1.6rem;'>{icon}</div>
+        <h2 class='h5 mb-0'>{title}</h2>
+      </div>
+      <p class='text-muted mb-4'>{desc}</p>
+      <div class='mt-auto'>{action}</div>
+    </div>
+  </div>
+</div>";
+        return new HtmlString(html);
+    }
+}
