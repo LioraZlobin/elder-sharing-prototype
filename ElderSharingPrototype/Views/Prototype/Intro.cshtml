@@ -3,61 +3,83 @@
 }
 
 <div class="container py-4" style="max-width: 900px;">
-    <h1 class="mb-3">ברוכים הבאים! בחרו את רמת השיתוף שנוחה לכם</h1>
+    <h1 class="mb-3">ברוכים הבאים! שירותי בריאות דיגיטליים לפי רמת השיתוף שנוחה לכם</h1>
 
-    <div class="alert alert-info">
+    <div class="alert alert-info" style="font-size:18px;">
         <p class="mb-1">
-            האפליקציה נועדה לעזור לך בשירותים יומיומיים: בנק, קופת חולים, חדשות, יומן ותזכורות.
+            האפליקציה נועדה לעזור לך בשירותי בריאות דיגיטליים: תזכורות לתרופות, תזכורות למדדים, מעקב רפואי וניהול מידע בריאותי.
         </p>
         <p class="mb-0">
-            אתה מחליט איזה מידע לשתף. אפשר לשנות רמת שיתוף בכל רגע.
+            אתה מחליט איזה מידע לשתף. אפשר להעלות או להוריד רמת שיתוף בכל רגע.
         </p>
+        <hr />
     </div>
 
     <h2 class="mt-4 mb-3">רמות שיתוף</h2>
 
     <div class="row g-3">
+
+        <!-- רמה 1 -->
         <div class="col-12 col-md-4">
             <div class="card h-100">
-                <div class="card-body">
+                <div class="card-body" style="font-size:18px;">
                     <h3 class="h5">רמה 1 – פרטיות גבוהה</h3>
-                    <ul class="mb-0">
-                        <li>שם, גיל, אזור מגורים</li>
-                        <li>חדשות, תזכורות כלליות, מזג אוויר</li>
-                        <li>ללא קול/מצלמה/מידע רפואי או בנקאי</li>
+                    <p class="text-muted">שקט, בטוח, וללא התחייבות</p>
+                    <ul class="mb-2">
+                        <li>קבלת תזכורות כלליות לתרופות ולמדדים</li>
+                        <li>לא נדרש להזין מידע רפואי אישי</li>
+                        <li>המערכת לא יודעת אילו תרופות אתה לוקח</li>
+                        <li>אין חיבור לקופת חולים</li>
                     </ul>
+                    <div class="text-success fw-bold">
+                        🔒 אפשר לשנות רמת שיתוף בכל רגע
+                    </div>
                 </div>
             </div>
         </div>
 
+        <!-- רמה 2 -->
         <div class="col-12 col-md-4">
             <div class="card h-100">
-                <div class="card-body">
+                <div class="card-body" style="font-size:18px;">
                     <h3 class="h5">רמה 2 – שיתוף בינוני</h3>
-                    <ul class="mb-0">
-                        <li>תזכורות תרופות ותורים</li>
-                        <li>מידע רפואי בסיסי (לא צילום, לא שמירת קול)</li>
-                        <li>שליטה מלאה – אפשר לשנות בכל רגע</li>
+                    <p class="text-muted">יותר נוחות, עם שליטה מלאה</p>
+                    <ul class="mb-2">
+                        <li>תזכורות לפי שם תרופה</li>
+                        <li>ניהול רשימת תרופות קבועות</li>
+                        <li>המידע נשאר במכשיר שלך בלבד</li>
+                        <li>אין שליחה של נתונים החוצה</li>
                     </ul>
+                    <div class="text-success fw-bold">
+                        🔒 אפשר למחוק מידע או לשנות רמה בכל זמן
+                    </div>
                 </div>
             </div>
         </div>
 
+        <!-- רמה 3 -->
         <div class="col-12 col-md-4">
             <div class="card h-100">
-                <div class="card-body">
+                <div class="card-body" style="font-size:18px;">
                     <h3 class="h5">רמה 3 – שיתוף גבוה</h3>
-                    <ul class="mb-0">
-                        <li>שירותי בנק (קריאה בלבד): יתרה ותנועות</li>
-                        <li>קופת חולים מתקדמת: מסמכים ותורים</li>
-                        <li>אפשרות שירות מצוקה</li>
+                    <p class="text-muted">ניהול רפואי מתקדם – בשליטתך</p>
+                    <ul class="mb-2">
+                        <li>הזנת מדידות: לחץ דם וסוכר</li>
+                        <li>זימון תור לרופא (בדמו)</li>
+                        <li>נדרש זיהוי לצורך שירותים מתקדמים בלבד</li>
                     </ul>
+                    <div class="text-success fw-bold">
+                        🔒 תוכל להוריד רמת שיתוף או למחוק נתונים בכל רגע
+                    </div>
                 </div>
             </div>
         </div>
+
     </div>
+
 
     <div class="mt-4 d-grid">
-        <a class="btn btn-primary btn-lg" href="/Prototype/Choose">בחרו רמת שיתוף</a>
+        <a class="btn btn-primary btn-lg" href="/Prototype/Choose" style="font-size:20px;">בחרו רמת שיתוף</a>
     </div>
+
 </div>

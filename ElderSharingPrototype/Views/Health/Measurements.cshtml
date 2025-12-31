@@ -1,0 +1,141 @@
+﻿@using System.Linq
+@model List<ElderSharingPrototype.Models.Health.VitalMeasurement>
+
+@{
+    ViewData["Title"] = "הזנת מדידות";
+
+    var bloodPressureHistory = (Model ?? new List<ElderSharingPrototype.Models.Health.VitalMeasurement>())
+        .Where(x => x.Kind == "BloodPressure")
+        .OrderByDescending(x => x.MeasuredAt)
+        .ToList();
+
+    var sugarHistory = (Model ?? new List<ElderSharingPrototype.Models.Health.VitalMeasurement>())
+        .Where(x => x.Kind == "Sugar")
+        .OrderByDescending(x => x.MeasuredAt)
+        .ToList();
+}
+
+<div class="container py-4" style="max-width: 900px;">
+    <h1 class="mb-3">הזנת מדידות</h1>
+    <div class="alert alert-info" style="font-size:18px;">
+        איננו שומרים מידע מעבר לנדרש. הנתונים נשארים במכשיר.
+    </div>
+
+    <!-- טפסים להזנה -->
+    <div class="row g-3">
+        <div class="col-12 col-md-6">
+            <form method="post" action="/Health/AddBloodPressure" class="card p-3">
+                <h2 class="h5">לחץ דם</h2>
+
+                <div class="row g-2">
+                    <div class="col-6">
+                        <label class="form-label">עליון</label>
+                        <input name="systolic" type="number" class="form-control form-control-lg" />
+                        <span class="text-danger">@Html.ValidationMessage("systolic")</span>
+                    </div>
+
+                    <div class="col-6">
+                        <label class="form-label">תחתון</label>
+                        <input name="diastolic" type="number" class="form-control form-control-lg" />
+                        <span class="text-danger">@Html.ValidationMessage("diastolic")</span>
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">הערה</label>
+                        <input name="notes" class="form-control form-control-lg" placeholder="אופציונלי" />
+                    </div>
+                </div>
+
+                <button class="btn btn-primary btn-lg mt-3" type="submit">שמור</button>
+            </form>
+        </div>
+
+        <div class="col-12 col-md-6">
+            <form method="post" action="/Health/AddSugar" class="card p-3">
+                <h2 class="h5">סוכר</h2>
+
+                <label class="form-label">mg/dL</label>
+                <input name="sugarMgDl" type="number" class="form-control form-control-lg" />
+                <span class="text-danger">@Html.ValidationMessage("sugarMgDl")</span>
+
+                <label class="form-label mt-2">הערה</label>
+                <input name="notes" class="form-control form-control-lg" placeholder="אופציונלי" />
+
+                <button class="btn btn-primary btn-lg mt-3" type="submit">שמור</button>
+            </form>
+        </div>
+    </div>
+
+    <hr class="my-4" />
+
+    <!-- היסטוריות נפרדות -->
+    <h2 class="h4 mb-3">היסטוריית מדידות</h2>
+
+    <div class="row g-3">
+        <!-- שמאל: לחץ דם -->
+        <div class="col-12 col-md-6">
+            <div class="card p-3 h-100">
+                <h3 class="h5 mb-3">לחץ דם</h3>
+
+                @if (!bloodPressureHistory.Any())
+                {
+                    <div class="text-muted" style="font-size:18px;">אין עדיין מדידות לחץ דם.</div>
+                }
+                else
+                {
+                    <div class="list-group">
+                        @foreach (var m in bloodPressureHistory)
+                        {
+                            <div class="list-group-item">
+                                <div style="font-size:18px;">
+                                    <strong>@($"{m.Systolic}/{m.Diastolic}")</strong>
+                                    <span class="text-muted"> – @m.MeasuredAt.ToString("dd/MM/yyyy HH:mm")</span>
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(m.Notes))
+                                {
+                                    <div class="text-muted">@m.Notes</div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- ימין: סוכר -->
+        <div class="col-12 col-md-6">
+            <div class="card p-3 h-100">
+                <h3 class="h5 mb-3">סוכר</h3>
+
+                @if (!sugarHistory.Any())
+                {
+                    <div class="text-muted" style="font-size:18px;">אין עדיין מדידות סוכר.</div>
+                }
+                else
+                {
+                    <div class="list-group">
+                        @foreach (var m in sugarHistory)
+                        {
+                            <div class="list-group-item">
+                                <div style="font-size:18px;">
+                                    <strong>@m.SugarMgDl</strong> <span class="text-muted">mg/dL</span>
+                                    <span class="text-muted"> – @m.MeasuredAt.ToString("dd/MM/yyyy HH:mm")</span>
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(m.Notes))
+                                {
+                                    <div class="text-muted">@m.Notes</div>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a class="btn btn-link" href="/Prototype/Services">חזרה לשירותים</a>
+    </div>
+</div>

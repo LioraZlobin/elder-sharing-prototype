@@ -2,21 +2,20 @@
 {
     public class MiniRegisterViewModel
     {
-        // רמה A
+        // רמה 1 – בסיסי
         public string? FirstName { get; set; }
+        public string? Language { get; set; }
         public int? Age { get; set; }
-        public string? Area { get; set; }
 
-        // רמה B+
-        public string? Hmo { get; set; }
-        public string? Medications { get; set; }
 
-        // רמה C
-        public string? EmergencyContactName { get; set; }
-        public string? EmergencyContactPhone { get; set; }
+        // רמה 2 – בינוני
+        public List<string> SelectedMedications { get; set; } = new();
 
-        // 🔹 חדש – אשראי (רמה C בלבד)
-        public string? CreditCardLast4 { get; set; }   // 4 ספרות אחרונות
-        public string? CreditCardExpiry { get; set; }  // MM/YY
+        public string? FixedMedications { get; set; } // תרופות קבועות
+        public List<string> SelectedDiseases { get; set; } = new();
+        public string? FixedDiseases { get; set; } // מחלות
+
+        // רמה 3 – גבוה
+        public string? IdNumber { get; set; } // ת"ז לזיהוי מול קופת חולים (דמו)
     }
 }

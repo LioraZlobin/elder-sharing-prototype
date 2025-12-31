@@ -1,0 +1,82 @@
+﻿@using ElderSharingPrototype.Models.Health
+@{
+    ViewData["Title"] = "זימון תור לרופא";
+    var requests = ViewBag.Requests as List<AppointmentRequest> ?? new List<AppointmentRequest>();
+}
+
+<div class="container py-4" style="max-width: 900px;">
+    <h1 class="mb-3">זימון תור לרופא</h1>
+
+    <div class="alert alert-info" style="font-size:18px;">
+        איננו שומרים מידע מעבר לנדרש. הנתונים נשארים במכשיר.
+    </div>
+
+    <form method="post" action="/Health/AddAppointment" class="card p-3 mb-4">
+        <h2 class="h5 mb-3">בקשת תור</h2>
+
+        <div class="row g-3">
+            <div class="col-12">
+                <label class="form-label" style="font-size:18px;">סיבה לפנייה</label>
+                <input name="reason" class="form-control form-control-lg" placeholder="למשל: כאבי ראש, בדיקה שגרתית..." />
+                <span class="text-danger">@Html.ValidationMessage("reason")</span>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="form-label" style="font-size:18px;">תאריך מועדף</label>
+                <input name="preferredDate" type="date" class="form-control form-control-lg" />
+                <span class="text-danger">@Html.ValidationMessage("preferredDate")</span>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label class="form-label" style="font-size:18px;">שעה מועדפת</label>
+                <input name="preferredTime" type="time" class="form-control form-control-lg" />
+                <span class="text-danger">@Html.ValidationMessage("preferredTime")</span>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label" style="font-size:18px;">הערות (אופציונלי)</label>
+                <input name="notes" class="form-control form-control-lg" placeholder="למשל: עדיף בבוקר / דחוף..." />
+            </div>
+        </div>
+
+        <button class="btn btn-primary btn-lg mt-3" type="submit">שלח בקשה</button>
+    </form>
+
+    <h2 class="h4 mb-2">הבקשות שלי</h2>
+
+    @if (!requests.Any())
+    {
+        <div class="text-muted" style="font-size:18px;">אין עדיין בקשות.</div>
+    }
+    else
+    {
+        <div class="list-group">
+            @foreach (var r in requests)
+            {
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div style="font-size:18px;">
+                        <strong>@r.Reason</strong>
+                        <div class="text-muted">
+                            @r.PreferredDate @r.PreferredTime
+                            • נוצר: @r.CreatedAt.ToString("dd/MM/yyyy HH:mm")
+                        </div>
+
+                        @if (!string.IsNullOrWhiteSpace(r.Notes))
+                        {
+                            <div class="text-muted">@r.Notes</div>
+                        }
+                    </div>
+
+                    <form method="post" action="/Health/DeleteAppointment" class="m-0">
+                        <input type="hidden" name="id" value="@r.Id" />
+                        <button class="btn btn-outline-danger">מחק</button>
+                    </form>
+                </div>
+            }
+        </div>
+    }
+
+    <div class="mt-4">
+        <a class="btn btn-link" href="/Prototype/Services">חזרה לשירותים</a>
+    </div>
+</div>

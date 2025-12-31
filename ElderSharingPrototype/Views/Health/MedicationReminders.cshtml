@@ -1,0 +1,107 @@
+﻿@model List<ElderSharingPrototype.Models.Health.ReminderItem>
+@{
+    ViewData["Title"] = "תזכורות תרופות";
+    var level = (string)(ViewBag.Level ?? "A");
+    bool detailed = (level == "B" || level == "C");
+
+    var userMeds = ViewBag.UserMeds as List<string> ?? new List<string>();
+}
+
+<div class="container py-4" style="max-width: 900px;">
+    <h1 class="mb-3">תזכורות תרופות</h1>
+
+    <div class="alert alert-info" style="font-size:18px;">
+        איננו שומרים מידע מעבר לנדרש. הנתונים נשארים במכשיר.
+        <br />
+        @if (!detailed)
+        {
+            <span>ברמה 1 התזכורת היא כללית (ללא שם תרופה).</span>
+        }
+        else
+        {
+            <span>ברמה 2 ומעלה ניתן להוסיף תזכורת עם שם התרופה מתוך הרשימה שסימנת בהרשמה.</span>
+        }
+    </div>
+
+    <form method="post" action="/Health/AddMedicationReminder" class="card p-3 mb-4">
+        <div class="row g-3">
+
+            @if (detailed)
+            {
+                <div class="col-12 col-md-6">
+                    <label class="form-label" style="font-size:18px;">בחר/י תרופה מהרשימה שלך</label>
+
+                    <select name="medicationName" class="form-select form-select-lg">
+                        <option value="">בחר/י תרופה</option>
+                        @foreach (var m in userMeds)
+                        {
+                            <option value="@m">@m</option>
+                        }
+                    </select>
+
+                    <span class="text-danger">@Html.ValidationMessage("medicationName")</span>
+
+                    <div class="form-text" style="font-size:16px;">
+                        לא מופיעה תרופה? חזרי למסך ההגדרות ועדכני את רשימת התרופות הקבועות.
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="col-12 col-md-6">
+                    <label class="form-label" style="font-size:18px;">סוג תזכורת</label>
+                    <input class="form-control form-control-lg" value="תזכורת כללית ללקיחת תרופות" disabled />
+                    <div class="form-text" style="font-size:16px;">
+                        לא נדרש להזין שם תרופה ברמה זו.
+                    </div>
+                </div>
+            }
+
+            <div class="col-12 col-md-3">
+                <label class="form-label" style="font-size:18px;">שעה</label>
+                <input name="time" type="time" class="form-control form-control-lg" />
+                <span class="text-danger">@Html.ValidationMessage("time")</span>
+            </div>
+
+            <div class="col-12 col-md-3">
+                <label class="form-label" style="font-size:18px;">הערה</label>
+                <input name="notes" class="form-control form-control-lg" placeholder="אופציונלי" />
+            </div>
+        </div>
+
+        <button class="btn btn-primary btn-lg mt-3" type="submit">הוסף תזכורת</button>
+    </form>
+
+    <h2 class="h4 mb-2">הרשימה שלי</h2>
+
+    @if (Model == null || !Model.Any())
+    {
+        <div class="text-muted" style="font-size:18px;">אין עדיין תזכורות.</div>
+    }
+    else
+    {
+        <div class="list-group">
+            @foreach (var r in Model)
+            {
+                <div class="list-group-item d-flex justify-content-between align-items-center">
+                    <div style="font-size:18px;">
+                        <strong>@r.Title</strong> — @r.Time
+                        @if (!string.IsNullOrWhiteSpace(r.Notes))
+                        {
+                            <div class="text-muted">@r.Notes</div>
+                        }
+                    </div>
+
+                    <form method="post" action="/Health/DeleteMedicationReminder" class="m-0">
+                        <input type="hidden" name="id" value="@r.Id" />
+                        <button class="btn btn-outline-danger">מחק</button>
+                    </form>
+                </div>
+            }
+        </div>
+    }
+
+    <div class="mt-4">
+        <a class="btn btn-link" href="/Prototype/Services">חזרה לשירותים</a>
+    </div>
+</div>
