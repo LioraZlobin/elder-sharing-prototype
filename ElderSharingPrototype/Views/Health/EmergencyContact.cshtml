@@ -1,0 +1,91 @@
+﻿@model ElderSharingPrototype.Models.Health.EmergencyContactViewModel
+@{
+    ViewData["Title"] = "פרטי איש קשר לחירום";
+}
+
+<div class="container py-4" style="max-width: 900px;">
+    <h1 class="mb-3">פרטי איש קשר לחירום</h1>
+
+    <div class="alert alert-info" style="font-size:18px;">
+        ברמה B או C ניתן לשמור ולהציג פרטי איש קשר במקרה חירום.
+    </div>
+
+    @* הודעה אחרי שמירה *@
+    @if (TempData["SavedOk"] != null)
+    {
+        <div class="alert alert-success" style="font-size:18px;">
+            @TempData["SavedOk"]
+        </div>
+    }
+
+    @* הודעה כללית מהמודל אם קיימת *@
+    @if (!string.IsNullOrWhiteSpace(Model.Message))
+    {
+        <div class="alert alert-success" style="font-size:18px;">
+            @Model.Message
+        </div>
+    }
+
+    <div class="card p-3 mb-4">
+        <h2 class="h5 mb-3">פרטים שמורים</h2>
+
+        @if (string.IsNullOrWhiteSpace(Model.FullName) && string.IsNullOrWhiteSpace(Model.PhoneNumber))
+        {
+            <div class="text-muted" style="font-size:18px;">אין עדיין איש קשר שמור.</div>
+        }
+        else
+        {
+            <div style="font-size:18px;">
+                <div><strong>שם:</strong> @Model.FullName</div>
+                <div><strong>טלפון:</strong> @Model.PhoneNumber</div>
+
+                @if (!string.IsNullOrWhiteSpace(Model.Relationship))
+                {
+                    <div><strong>קשר:</strong> @Model.Relationship</div>
+                }
+            </div>
+        }
+    </div>
+
+    @* חשוב: שולחים ל-Action EmergencyContact (POST) *@
+    <form asp-action="EmergencyContact" asp-controller="Health" method="post" class="card p-3">
+        <h2 class="h5 mb-3">עדכון איש קשר</h2>
+
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <label asp-for="FullName" class="form-label" style="font-size:18px;">שם</label>
+                <input asp-for="FullName" class="form-control form-control-lg" />
+                <span asp-validation-for="FullName" class="text-danger"></span>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label asp-for="PhoneNumber" class="form-label" style="font-size:18px;">טלפון</label>
+                <input asp-for="PhoneNumber" class="form-control form-control-lg" />
+                <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label asp-for="Relationship" class="form-label" style="font-size:18px;">מה הקשר אלייך?</label>
+                <input asp-for="Relationship" class="form-control form-control-lg" placeholder="בן/בת זוג, ילד/ה, מטפל/ת..." />
+                <span asp-validation-for="Relationship" class="text-danger"></span>
+            </div>
+
+            <div class="col-12">
+                <label asp-for="Message" class="form-label" style="font-size:18px;">הודעה קבועה (אופציונלי)</label>
+                <textarea asp-for="Message" rows="3" class="form-control form-control-lg"
+                          placeholder="לדוגמה: במקרה חירום, אנא צור/י קשר איתי..."></textarea>
+                <span asp-validation-for="Message" class="text-danger"></span>
+            </div>
+        </div>
+
+        <button class="btn btn-primary btn-lg mt-3" type="submit">שמור</button>
+    </form>
+
+    <div class="mt-4">
+        <a class="btn btn-link" href="/Prototype/Services">חזרה לשירותים</a>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

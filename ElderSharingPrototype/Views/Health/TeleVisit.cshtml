@@ -1,0 +1,305 @@
+﻿@using System
+@using System.Linq
+@using ElderSharingPrototype.Models.Health
+@{
+    ViewData["Title"] = "תור וידיאו/טלפוני עם רופא (דמו)";
+
+    // הקונטרולר אמור לשים פה רשימת תורים עתידיים מה-DB:
+    // ViewBag.Upcoming = List<AppointmentRequestEntity>
+    var upcoming = (ViewBag.Upcoming as System.Collections.Generic.List<AppointmentRequestEntity>)
+                   ?? new System.Collections.Generic.List<AppointmentRequestEntity>();
+}
+
+<div class="container py-4" style="max-width: 900px;">
+    <h1 class="mb-3">תור וידיאו / טלפוני עם רופא (דמו)</h1>
+
+    <div class="alert alert-info" style="font-size:18px;">
+        כאן מזמינים תור. הווידיאו <strong>לא</strong> מופיע בזמן הזמנה —
+        הוא מופיע רק לאחר לחיצה על <strong>“התחל תור”</strong> בתורים העתידיים.
+    </div>
+
+    <!-- ✅ כרטיס זימון תור -->
+    <div class="card p-3 shadow-sm mb-4" style="border-radius:16px;">
+        <h2 class="h5 mb-3">זימון תור חדש</h2>
+
+        <div class="row g-3">
+
+            <div class="col-md-6">
+                <label class="form-label">סוג ביקור</label>
+                <select class="form-select" id="visitType">
+                    <option value="video" selected>וידיאו</option>
+                    <option value="phone">טלפוני</option>
+                </select>
+            </div>
+
+            <div class="col-md-6">
+                <label class="form-label">תאריך ושעה</label>
+                <input id="visitDateTime"
+                       type="datetime-local"
+                       class="form-control"
+                       aria-label="בחרי תאריך ושעה" />
+                <div class="form-text">
+                    בחרי תאריך ושעה מהתיבה (בלי להקליד).
+                </div>
+            </div>
+
+            <div class="col-12">
+                <label class="form-label">סיבה לפנייה</label>
+                <textarea id="visitReason" class="form-control" rows="3"
+                          placeholder="למשל: כאבי ראש, בדיקה שגרתית..."></textarea>
+            </div>
+
+            <div class="col-12 d-flex flex-wrap gap-2">
+                <button id="btnSchedule"
+                        type="button"
+                        class="btn btn-success btn-lg"
+                        onclick="scheduleTeleVisit()">
+                    ✅ הזמן תור (דמו)
+                </button>
+
+                <button type="button"
+                        class="btn btn-outline-secondary btn-lg"
+                        onclick="clearForm()">
+                    נקה טופס
+                </button>
+            </div>
+
+            <div id="scheduleStatus" class="alert alert-warning mt-3" style="display:none;"></div>
+        </div>
+    </div>
+
+    <!-- ✅ תורים עתידיים -->
+    <div class="card p-3 shadow-sm" style="border-radius:16px;">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <h2 class="h5 mb-0">תורים עתידיים שהוזמנו</h2>
+            <div class="text-muted" style="font-size:14px;">
+                תצוגה לדמו (הקונטרולר אמור להביא מה-DB)
+            </div>
+        </div>
+
+        <hr />
+
+        @if (!upcoming.Any())
+        {
+            <div class="text-muted" style="font-size:18px;">אין תורים עתידיים.</div>
+        }
+        else
+        {
+            <div class="list-group">
+                @foreach (var a in upcoming.OrderBy(x => x.PreferredDate).ThenBy(x => x.PreferredTime))
+                {
+                    // נשתמש בשדות קיימים: PreferredDate, PreferredTime, Reason, Notes
+                    // Notes נשמור כסוג הביקור: "video" / "phone" (או "וידיאו"/"טלפוני") – תלוי איך תשמרי ב-DB.
+                    var visitType = (a.Notes ?? "").Trim().ToLowerInvariant();
+                    bool isVideo = visitType.Contains("video") || visitType.Contains("ויד");
+
+                    <div class="list-group-item" style="border-radius:12px; margin-bottom:10px;">
+                        <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                            <div>
+                                <div style="font-size:18px; font-weight:800;">
+                                    @(isVideo ? "🎥 תור וידיאו" : "📞 תור טלפוני")
+                                </div>
+
+                                <div class="text-muted" style="font-size:16px;">
+                                    תאריך/שעה: <strong>@a.PreferredDate</strong> @a.PreferredTime
+                                </div>
+
+                                @if (!string.IsNullOrWhiteSpace(a.Reason))
+                                {
+                                    <div style="font-size:16px;">סיבה: @a.Reason</div>
+                                }
+                            </div>
+
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button type="button"
+                                        class="btn btn-primary"
+                                        onclick="startAppointment('@a.Id', @(isVideo.ToString().ToLower()))">
+                                    התחל תור
+                                </button>
+
+                                <form method="post" action="/Health/CancelTeleVisit" style="display:inline;">
+                                    <input type="hidden" name="id" value="@a.Id" />
+                                    <button type="submit" class="btn btn-outline-danger">
+                                        בטל תור
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div id="apptStatus_@a.Id" class="alert alert-warning mt-3" style="display:none;"></div>
+
+                        <!-- ✅ תיבת וידיאו: תופיע רק אחרי "התחל תור" ורק אם זה וידיאו -->
+                        <div id="videoBox_@a.Id" class="mt-3" style="display:none;">
+                            <div class="border rounded p-3" style="border-radius:16px;">
+                                <strong>תצוגה עצמית (מצלמה+מיקרופון):</strong>
+
+                                <div class="mt-3" style="border-radius:12px; overflow:hidden; background:#000;">
+                                    <video id="video_@a.Id"
+                                           autoplay playsinline muted
+                                           style="width:100%; max-height:420px; display:block;">
+                                    </video>
+                                </div>
+
+                                <div class="d-flex gap-2 flex-wrap mt-3">
+                                    <button type="button"
+                                            class="btn btn-outline-danger"
+                                            onclick="stopVideo('@a.Id')">
+                                        עצור תור
+                                    </button>
+                                </div>
+
+                                <small class="text-muted d-block mt-2">
+                                    דמו מקומי בלבד: הווידיאו מציג אותך בתוך התיבה.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="mt-4">
+        <a class="btn btn-outline-secondary" href="/Prototype/Services">חזרה לשירותים</a>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        // --- טופס זימון ---
+        function showScheduleStatus(msg, type) {
+            const box = document.getElementById('scheduleStatus');
+            box.style.display = 'block';
+            box.className = 'alert ' + (type === 'ok' ? 'alert-success' : 'alert-warning') + ' mt-3';
+            box.innerText = msg;
+        }
+
+        function hideScheduleStatus() {
+            const box = document.getElementById('scheduleStatus');
+            box.style.display = 'none';
+            box.innerText = '';
+        }
+
+        function clearForm() {
+            document.getElementById('visitType').value = 'video';
+            document.getElementById('visitDateTime').value = '';
+            document.getElementById('visitReason').value = '';
+            hideScheduleStatus();
+        }
+
+        function getFormData() {
+            const type = (document.getElementById('visitType').value || '').trim();
+            const dt = (document.getElementById('visitDateTime').value || '').trim(); // yyyy-MM-ddTHH:mm
+            const reason = (document.getElementById('visitReason').value || '').trim();
+            return { type, dt, reason };
+        }
+
+        async function scheduleTeleVisit() {
+            const { type, dt, reason } = getFormData();
+
+            if (!dt) {
+                showScheduleStatus("נא לבחור תאריך ושעה להזמנת התור (דמו).", "err");
+                return;
+            }
+
+            // נפרק ל-Date + Time בשביל ה-Entity שלך (PreferredDate/PreferredTime)
+            const parts = dt.split("T");
+            const date = parts[0] || "";
+            const time = parts[1] || "";
+
+            try {
+                const resp = await fetch("/Health/ScheduleTeleVisit", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        visitType: type,       // "video" / "phone"
+                        preferredDate: date,
+                        preferredTime: time,
+                        reason: reason
+                    })
+                });
+
+                const data = await resp.json();
+
+                if (!data || !data.ok) {
+                    throw new Error((data && data.message) ? data.message : "שגיאה בהזמנת התור");
+                }
+
+                showScheduleStatus("✅ התור הוזמן בהצלחה (דמו). רענני כדי לראות אותו ברשימת התורים.", "ok");
+
+                // רענון קצר כדי שיראו את התור ברשימה
+                setTimeout(() => location.reload(), 700);
+
+            } catch (e) {
+                console.error(e);
+                showScheduleStatus("לא הצלחנו להזמין את התור כרגע. נסי שוב. (דמו)", "err");
+            }
+        }
+
+        // --- תורים + וידיאו ---
+        // נשמור stream לכל תור כדי לעצור בנפרד
+        const streams = {}; // key: appointmentId -> MediaStream
+
+        function setApptStatus(appointmentId, msg, type) {
+            const box = document.getElementById("apptStatus_" + appointmentId);
+            if (!box) return;
+            box.style.display = "block";
+            box.className = "alert " + (type === "ok" ? "alert-success" : "alert-warning") + " mt-3";
+            box.innerText = msg;
+        }
+
+        function hideApptStatus(appointmentId) {
+            const box = document.getElementById("apptStatus_" + appointmentId);
+            if (!box) return;
+            box.style.display = "none";
+            box.innerText = "";
+        }
+
+        async function startAppointment(appointmentId, isVideo) {
+            hideApptStatus(appointmentId);
+
+            if (!isVideo) {
+                // טלפוני: אין וידיאו, רק הודעת דמו
+                setApptStatus(appointmentId, "📞 התור הטלפוני התחיל (דמו). אין תצוגת וידיאו.", "ok");
+                return;
+            }
+
+            // וידיאו: רק כאן נפתח הוידיאו
+            const box = document.getElementById("videoBox_" + appointmentId);
+            const video = document.getElementById("video_" + appointmentId);
+
+            if (!box || !video) return;
+
+            box.style.display = "block";
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                streams[appointmentId] = stream;
+                video.srcObject = stream;
+                await video.play();
+
+                setApptStatus(appointmentId, "🎥 התור בווידיאו התחיל (דמו).", "ok");
+            } catch (err) {
+                console.error(err);
+                setApptStatus(appointmentId, "לא הצלחנו להפעיל מצלמה/מיקרופון. בדקי הרשאות בדפדפן (Allow) ונסי שוב.", "err");
+                box.style.display = "none";
+            }
+        }
+
+        function stopVideo(appointmentId) {
+            const stream = streams[appointmentId];
+            if (stream) {
+                stream.getTracks().forEach(t => t.stop());
+                delete streams[appointmentId];
+            }
+
+            const video = document.getElementById("video_" + appointmentId);
+            if (video) video.srcObject = null;
+
+            const box = document.getElementById("videoBox_" + appointmentId);
+            if (box) box.style.display = "none";
+
+            setApptStatus(appointmentId, "הדמו נעצר.", "ok");
+        }
+    </script>
+}

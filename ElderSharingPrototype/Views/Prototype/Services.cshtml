@@ -1,39 +1,91 @@
 ﻿@using Microsoft.AspNetCore.Html
+@using ElderSharingPrototype.Models
 
 @{
     ViewData["Title"] = "שירותים רפואיים";
+
     var level = (string)(ViewBag.Level ?? "A"); // A / B / C
     string levelText = level == "A" ? "רמה 1 – פרטיות גבוהה" :
                        level == "B" ? "רמה 2 – שיתוף בינוני" :
                                       "רמה 3 – שיתוף גבוה";
+
+    var explanationMode = (ExplanationMode)(ViewBag.ExplanationMode ?? (int)ExplanationMode.WithExplanation);
+    var uiAdaptation = (UiAdaptation)(ViewBag.UiAdaptation ?? (int)UiAdaptation.NotAdapted);
+
+    bool isAdapted = uiAdaptation == UiAdaptation.Adapted;
+    bool withExplanation = explanationMode == ExplanationMode.WithExplanation;
+
+    var titleStyle = isAdapted ? "font-size:46px; line-height:1.2;" : "font-size:30px; line-height:1.2;";
+    var textStyle = isAdapted ? "font-size:22px; line-height:1.7;" : "font-size:16px; line-height:1.5;";
+    var btnStyle = isAdapted ? "font-size:24px; padding:16px 22px;" : "font-size:18px; padding:10px 14px;";
+    var dangerBtnStyle = isAdapted ? "font-size:26px; padding:16px 22px;" : "font-size:20px; padding:10px 14px;";
+
+    var cardShellClass = isAdapted ? "card h-100 shadow-sm" : "card h-100";
+    var cardTitleSize = isAdapted ? "font-size:22px;" : "font-size:18px;";
+    var descStyle = isAdapted ? "font-size:20px; line-height:1.7;" : "font-size:16px; line-height:1.5;";
+    var iconStyle = isAdapted ? "font-size:56px; line-height:1;" : "display:none;";
+
+    Func<string, string> MaybeDesc = (d) => withExplanation ? d : "";
+
+    // ✅ הרשאות יורשות לפי רמה (A ⊂ B ⊂ C)
+    bool canUseLevelA = true;                 // כולם
+    bool canUseLevelB = (level == "B" || level == "C");
+    bool canUseLevelC = (level == "C");
+
+    // ===== ROBOT UI (רק בממשק מותאם) =====
+    string robotLine = level == "A"
+        ? "כדי לשמור על פרטיות גבוהה, נתחיל בשירותים כלליים ובטוחים."
+        : level == "B"
+            ? "אני יכולה לעזור יותר אם תרצי. בחרת שיתוף בינוני — מצוין."
+            : "ברמה 3 יש לי יכולת לעזור הרבה יותר (מיקרופון/מצלמה לפי אישור).";
+
+    // ✅ המלצה רנדומלית שמגיעה מה-Controller (ViewBag)
+    var recText = ViewBag.RobotRecText as string;
+    var recUrl = ViewBag.RobotRecUrl as string;
+    var recAudio = ViewBag.RobotRecAudio as string; // ✅ שם קובץ mp3 כמו "rec_A_1.mp3"
+    var hasRec = !string.IsNullOrWhiteSpace(recText) && !string.IsNullOrWhiteSpace(recUrl);
+
+    // טקסט ברירת מחדל אם אין המלצה
+    string robotTip = hasRec ? recText! : "המלצה שלי עכשיו: תזכורת למדדים.";
+
+    // כפתור/כותרת של הפעולה המומלצת
+    string primaryHref = hasRec ? recUrl! : "/Health/VitalsReminders";
+    string primaryTitle = "התחלת פעולה מומלצת";
+    string primaryBtnText = hasRec ? "פתחי את השירות המומלץ" : "פתח עכשיו";
+
+    // טקסט קטן שמופיע מתחת לכפתור
+    string recommendedActionLabel = hasRec ? recText! : "תזכורת ללקיחת מדדים";
 }
 
 <div class="container py-4" style="max-width: 1100px;">
 
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
         <div>
-            <h1 class="mb-2">שירותים רפואיים</h1>
-            <p class="text-muted mb-0" style="font-size:18px;">
-                רמת השיתוף שנבחרה: <strong>@levelText</strong>
-            </p>
+            <h1 class="mb-2" style="@titleStyle">שירותים רפואיים</h1>
+
+            @if (withExplanation)
+            {
+                <p class="text-muted mb-0" style="@textStyle">
+                    רמת השיתוף שנבחרה: <strong>@levelText</strong>
+                </p>
+            }
         </div>
 
-        <a class="btn btn-outline-primary btn-lg" href="/Prototype/Choose" style="font-size:18px;">
+        <a class="btn btn-outline-primary btn-lg" href="/Prototype/Choose" style="@btnStyle">
             שינוי רמת שיתוף
         </a>
     </div>
 
     <div class="d-flex gap-2 flex-wrap mt-3">
-        @* לא מציגים ברמה C *@
         @if (level != "C")
         {
-            <a class="btn btn-primary btn-lg" style="font-size:18px;" href="/Prototype/Choose">
+            <a class="btn btn-primary btn-lg" style="@btnStyle" href="/Prototype/Choose">
                 רוצה להוסיף עוד שירותים?
             </a>
         }
 
         <form method="post" action="/Prototype/DeleteMyData" class="m-0">
-            <button type="submit" class="btn btn-outline-danger btn-lg" style="font-size:20px;">
+            <button type="submit" class="btn btn-outline-danger btn-lg" style="@dangerBtnStyle">
                 מחיקת כל המידע שלי
             </button>
         </form>
@@ -41,136 +93,350 @@
 
     <hr class="my-4" />
 
+    @* =========================
+       ✅ ROBOT UI (רק בממשק מותאם)
+       ========================= *@
+    @if (isAdapted)
+    {
+            <div class="mb-4 p-4" style="border-radius:18px; border:1px solid rgba(15,23,42,0.08); background: rgba(255,255,255,0.88); box-shadow: 0 10px 24px rgba(15,23,42,0.08);">
+            <div class="d-flex align-items-start gap-3">
+                <div style="font-size:44px; line-height:1;">🤖</div>
+
+                <div class="robot-face">
+                    <span class="robot-wave"></span>
+                </div>
+
+                <div style="@textStyle">
+                    <div style="font-weight:800; font-size:26px; margin-bottom:6px;">הרובוט אומר:</div>
+                    <div class="mb-2">@robotLine</div>
+                    <div style="font-weight:700;">@robotTip</div>
+
+                    <div class="d-flex gap-2 mt-2">
+                        <button id="robotReplayBtn" type="button" class="btn btn-outline-primary btn-sm" onclick="robotSpeak()">🔊 השמע שוב</button>
+                        <button id="robotStopBtn" type="button" class="btn btn-outline-secondary btn-sm" onclick="robotStop()">⏹ עצור</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-3 p-3" style="border-radius:16px; background: rgba(230,241,255,0.85); border: 1px solid rgba(37,140,251,0.25);">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div style="font-size:22px; font-weight:800;">
+                        ✅ @primaryTitle
+                    </div>
+                    <a class="btn btn-primary btn-lg" href="@primaryHref" style="@btnStyle">
+                        @primaryBtnText
+                    </a>
+                </div>
+                <div class="text-muted mt-2" style="font-size:18px;">
+                    פעולה מומלצת: <strong>@recommendedActionLabel</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+            <h2 class="m-0" style="font-size:24px; font-weight:800;">שירותים נוספים</h2>
+            <span class="text-muted" style="font-size:18px;">בחרי שירות כדי להמשיך</span>
+        </div>
+    }
+
     <div class="row g-3">
 
-        <!-- תזכורות תרופות: כרטיס אחד שמתאים לרמה -->
-        @if (level == "A")
-        {
-            @ServiceCard(
+        @ServiceCard(
+            "תזכורת ללקיחת מדדים",
+            MaybeDesc("תזכורת למדדים: לחץ דם, סוכר."),
+            "🩺",
+            true,
+            "/Health/VitalsReminders",
+            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
+            "pastel-1"
+        )
+
+        @ServiceCard(
             "תזכורת לתרופות",
-                "תזכורת כללית ללקיחת תרופות.",
-                "💊",
-                true,
-                "/Health/MedicationReminders"
-                )
-                }
+            MaybeDesc("תזכורת כללית ללקיחת תרופות (ללא שם תרופה)."),
+            "💊",
+            canUseLevelA,
+            "/Health/MedicationReminders",
+            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
+            "pastel-2"
+        )
 
-        @if (level == "B" || level == "C")
-        {
-            @ServiceCard(
+        @ServiceCard(
+            "המלצה לביקור רופא / בדיקות שגרתיות",
+            MaybeDesc("המלצות כלליות לתזמון ביקור רופא או ביצוע בדיקות שגרתיות."),
+            "📅",
+            canUseLevelA,
+            "/Health/CheckupRecommendations",
+            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
+            "pastel-3"
+        )
+
+        @ServiceCard(
+            "התרעה קולית במצבי חריגה / סיכון סביבתי",
+            MaybeDesc("התראה קולית (דמו) במקרה של חריגה או סיכון סביבתי."),
+            "🔊",
+            canUseLevelA,
+            "/Health/AudioAlerts",
+            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
+            "pastel-4"
+        )
+
+        @ServiceCard(
             "תזכורות תרופות עם שם תרופה",
-                "התראות לתרופות לפי שם ושעה.",
-                "💊",
-                true,
-                "/Health/MedicationReminders"
-                )
-                }
+            MaybeDesc("התראות לתרופות לפי שם ושעה."),
+            "💊",
+            canUseLevelB,
+            "/Health/MedicationReminders",
+            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
+            "pastel-5"
+        )
+
+        @ServiceCard(
+            "ניהול רשימת תרופות קבועות",
+            MaybeDesc("צפייה/עדכון ברשימת התרופות הקבועות."),
+            "📋",
+            canUseLevelB,
+            "/Health/MedicationList",
+            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
+            "pastel-6"
+        )
+
+        @ServiceCard(
+            "זימון תור לרופא",
+            MaybeDesc("בקשת תור לרופא כולל בחירת תחום טיפול (דמו)."),
+            "🏥",
+            canUseLevelB,
+            "/Health/AppointmentRequest",
+            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
+            "pastel-1"
+        )
+
+        @ServiceCard(
+            "פרטי איש קשר לחירום",
+            MaybeDesc("שמירת פרטי איש קשר לצורך חירום."),
+            "📞",
+            canUseLevelB,
+            "/Health/EmergencyContact",
+            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
+            "pastel-2"
+        )
+
+        @ServiceCard(
+            "יצירת קשר טקסטואלי במקרה חירום",
+            MaybeDesc("שליחת הודעת טקסט (דמו) לאיש קשר במקרה חירום."),
+            "💬",
+            canUseLevelB,
+            "/Health/EmergencyText",
+            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
+            "pastel-3"
+        )
+
+        @ServiceCard(
+            "מדידת מדדים (WiFi)",
+            MaybeDesc("קריאת מדדים דרך WiFi. ברמה 2 מוצג חד־פעמי, וברמה 3 נשמר למסד נתונים ומופיע בהיסטוריה."),
+            "📈",
+            canUseLevelB,
+            "/Health/Measurements",
+            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
+            "pastel-4"
+        )
 
 
         @ServiceCard(
-                "תזכורת ללקיחת מדדים",
-                "תזכורת למדדים: לחץ דם, סוכר.",
-                "🩺",
-                true,
-                "/Health/VitalsReminders"
-                )
-
-        <!-- שירותים לרמה B ומעלה -->
-        @{
-                bool levelBAllowed = (level == "B" || level == "C");
-                }
+            "תור טלפוני / תור וידיאו",
+            MaybeDesc("פתיחת מיקרופון/מצלמה לצורך תור טלפוני או וידיאו (דמו)."),
+            "🎥",
+            canUseLevelC,
+            "/Health/TeleVisit",
+            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
+            "pastel-5"
+        )
 
         @ServiceCard(
-                "ניהול רשימת תרופות קבועות",
-                "צפייה/עדכון ברשימת התרופות הקבועות.",
-                "📋",
-                levelBAllowed,
-                levelBAllowed ? "/Health/MedicationList" : "#"
-                )
-
-        <!-- שירותים לרמה C בלבד -->
-        @{
-            bool levelCAllowed = (level == "C");
-        }
-
-        @ServiceCard(
-        "הזנת מדידות ושמירה",
-                "הזנת לחץ דם/סוכר ושמירה למעקב (דמו).",
-                "📈",
-                levelCAllowed,
-                levelCAllowed ? "/Health/Measurements" : "#"
-                )
-
-        @ServiceCard(
-                "זימון תור לרופא",
-                "קביעת תור לרופא (דמו).",
-                "🏥",
-                levelCAllowed,
-                levelCAllowed ? "/Health/AppointmentRequest" : "#"
-                )
+            "פרטי איש קשר ויצירת קשר חזותי בחירום",
+            MaybeDesc("יצירת קשר חזותי עם איש קשר (מצלמה+מיקרופון) במקרה חירום (דמו)."),
+            "🚨",
+            canUseLevelC,
+            "/Health/EmergencyVideo",
+            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
+            "pastel-6"
+        )
 
     </div>
 
-<!-- Modal לשדרוג רמת שיתוף (לשירותים חסומים) -->
-<div class="modal fade" id="upgradeModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">נדרשת רמת שיתוף גבוהה יותר</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="סגור"></button>
-            </div>
-            <div class="modal-body" style="font-size:18px;">
-                כדי להשתמש בשירות <strong id="blockedServiceName"></strong> נדרשת רמת שיתוף גבוהה יותר.
-                <br />
-                האם תרצה לשדרג?
-            </div>
-            <div class="modal-footer">
-                <form method="post" action="/Prototype/UpgradeLevel" class="m-0">
-                    <button type="submit" class="btn btn-primary btn-lg">כן, שדרג</button>
-                </form>
-                <button type="button" class="btn btn-outline-secondary btn-lg" data-bs-dismiss="modal">
-                    לא, השאר
-                </button>
+    <div class="modal fade" id="upgradeModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" style="@textStyle">נדרשת רמת שיתוף גבוהה יותר</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="סגור"></button>
+                </div>
+
+                <div class="modal-body" style="@textStyle">
+                    כדי להשתמש בשירות <strong id="blockedServiceName"></strong> נדרשת רמת שיתוף גבוהה יותר.
+                    <br />
+                    האם תרצה לשדרג?
+                </div>
+
+                <div class="modal-footer">
+                    <form method="post" action="/Prototype/UpgradeLevel" class="m-0">
+                        <button type="submit" class="btn btn-primary btn-lg" style="@btnStyle">כן, שדרג</button>
+                    </form>
+                    <button type="button" class="btn btn-outline-secondary btn-lg" style="@btnStyle" data-bs-dismiss="modal">
+                        לא, השאר
+                    </button>
+                </div>
             </div>
         </div>
     </div>
+
 </div>
 
 @section Scripts {
 <script>
+    // ✅ FIX: Modal becomes unclickable due to stacking context (backdrop-filter etc.)
+    (function () {
+        const style = document.createElement("style");
+        style.innerHTML = `
+            .modal-backdrop { z-index: 1040 !important; }
+            .modal { z-index: 1055 !important; }
+            .modal-dialog, .modal-content { pointer-events: auto !important; }
+        `;
+        document.head.appendChild(style);
+    })();
+
     function openUpgradeModal(serviceName) {
         document.getElementById('blockedServiceName').innerText = serviceName;
-
         const modalEl = document.getElementById('upgradeModal');
         const modal = new bootstrap.Modal(modalEl);
         modal.show();
     }
+
+    // =========================
+    // 🤖 ROBOT AUDIO (MP3) + CONTROLS
+    // =========================
+    (function () {
+        const isAdapted = @( (uiAdaptation == UiAdaptation.Adapted) ? "true" : "false" );
+        if (!isAdapted) return;
+
+        const level = "@level"; // A/B/C
+
+        // הטקסט שמופיע ב"רובוט אומר"
+        const recText = @Html.Raw(System.Text.Json.JsonSerializer.Serialize((string)(ViewBag.RobotRecText ?? "")));
+
+        // ✅ שם קובץ ה-mp3 שמגיע מהקונטרולר (מנוע ההמלצות)
+        const recAudioFile = @Html.Raw(System.Text.Json.JsonSerializer.Serialize((string)(ViewBag.RobotRecAudio ?? "")));
+
+        // fallback לפי רמה (אם משום מה לא הגיע AudioFile)
+        const fallbackByLevel = {
+            A: "/audio/robot/rec_A_1.mp3",
+            B: "/audio/robot/rec_B_1.mp3",
+            C: "/audio/robot/rec_C_1.mp3"
+        };
+
+        const replayBtn = document.getElementById("robotReplayBtn");
+        const stopBtn = document.getElementById("robotStopBtn");
+
+        const robotBox = document.querySelector(".robot-face")?.parentElement;
+
+        let audio = null;
+
+        function pickAudioSrc() {
+            const lvl = (level || "A").trim().toUpperCase();
+            const file = (recAudioFile || "").trim();
+
+            // אם הגיע קובץ מהשרת – ננגן אותו בדיוק
+            if (file) return "/audio/robot/" + file;
+
+            // אחרת fallback ברמה
+            return fallbackByLevel[lvl] || fallbackByLevel.A;
+        }
+
+        function stopAudio() {
+            if (!audio) return;
+            try {
+                audio.pause();
+                audio.currentTime = 0;
+            } catch (e) {}
+            robotBox?.classList.remove("robot-speaking");
+        }
+
+        function playAudio() {
+            // אם אין טקסט ואין קובץ – לא מנגנים
+            if (!recText && !recAudioFile) return;
+
+            stopAudio();
+
+            const src = pickAudioSrc();
+            audio = new Audio(src);
+
+            audio.onplay = () => robotBox?.classList.add("robot-speaking");
+            audio.onended = () => robotBox?.classList.remove("robot-speaking");
+            audio.onerror = () => robotBox?.classList.remove("robot-speaking");
+
+            audio.play().catch(() => {});
+        }
+
+        window.robotSpeak = playAudio;
+        window.robotStop = stopAudio;
+
+        if (replayBtn) replayBtn.addEventListener("click", playAudio);
+        if (stopBtn) stopBtn.addEventListener("click", stopAudio);
+
+        // autoplay עדין אחרי טעינה
+        window.addEventListener("load", () => {
+            setTimeout(playAudio, 250);
+        });
+    })();
 </script>
 }
 
 @functions {
-    public IHtmlContent ServiceCard(string title, string desc, string icon, bool allowed, string href)
+    public IHtmlContent ServiceCard(
+        string title,
+        string desc,
+        string icon,
+        bool allowed,
+        string href,
+        bool isAdapted,
+        bool withExplanation,
+        string cardShellClass,
+        string cardTitleSize,
+        string descStyle,
+        string iconStyle,
+        string btnStyleInline,
+        string? pastelClass = null
+    )
     {
         var btnText = allowed ? "פתח שירות" : "שירות חסום";
-        var btnClass = allowed ? "btn btn-primary w-100 btn-lg" : "btn btn-outline-secondary w-100 btn-lg";
-
+        var baseBtnClass = allowed ? "btn btn-primary w-100 btn-lg" : "btn btn-outline-secondary w-100 btn-lg";
         var action = allowed
-            ? $"<a class='{btnClass}' href='{href}'>" + btnText + "</a>"
-            : $"<button type='button' class='{btnClass}' onclick=\"openUpgradeModal('{title}')\">" + btnText + "</button>";
+            ? $"<a class='{baseBtnClass}' style='{btnStyleInline}' href='{href}'>{btnText}</a>"
+            : $"<button type='button' class='{baseBtnClass}' style='{btnStyleInline}' onclick=\"openUpgradeModal('{title}')\">{btnText}</button>";
+
+        var descHtml = (!string.IsNullOrWhiteSpace(desc) && withExplanation)
+            ? $"<p class='text-muted mb-4' style='{descStyle}'>{desc}</p>"
+            : "";
+
+        var iconHtml = $"<div style='{iconStyle}'>{icon}</div>";
+
+        var headerHtml = isAdapted
+            ? $@"<div class='d-flex align-items-center gap-3 mb-2'>{iconHtml}<h2 class='mb-0' style='{cardTitleSize}'>{title}</h2></div>"
+            : $@"<div class='mb-2'><h2 class='mb-0' style='{cardTitleSize}'>{title}</h2></div>";
+
+        var cardExtraClass = (isAdapted && !string.IsNullOrWhiteSpace(pastelClass)) ? $" {pastelClass}" : "";
 
         var html = $@"
 <div class='col-12 col-md-6 col-lg-4'>
-  <div class='card h-100 shadow-sm'>
+  <div class='{cardShellClass}{cardExtraClass}'>
     <div class='card-body d-flex flex-column'>
-      <div class='d-flex align-items-center gap-2 mb-2'>
-        <div style='font-size: 1.8rem;'>{icon}</div>
-        <h2 class='h5 mb-0'>{title}</h2>
-      </div>
-      <p class='text-muted mb-4' style='font-size:18px;'>{desc}</p>
+      {headerHtml}
+      {descHtml}
       <div class='mt-auto'>{action}</div>
     </div>
   </div>
 </div>";
+
         return new HtmlString(html);
     }
 }

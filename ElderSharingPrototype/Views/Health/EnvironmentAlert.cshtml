@@ -1,0 +1,36 @@
+﻿@{
+    ViewData["Title"] = "התרעה קולית – חריגה / סיכון סביבתי";
+}
+
+<div class="container py-4" style="max-width: 900px;">
+    <h1 class="mb-3">התרעה קולית – חריגה / סיכון סביבתי</h1>
+
+    <div class="alert alert-info" style="font-size:18px;">
+        דמו: השירות מדגים התרעה קולית במצב חריגה או סיכון סביבתי.
+    </div>
+
+    <div class="card p-3" style="font-size:18px;">
+        <p class="mb-2">
+            לחץ/י על הכפתור כדי להפעיל הודעת התרעה לדוגמה.
+        </p>
+
+        <button class="btn btn-primary btn-lg" type="button" onclick="playAlert()">הפעל התרעה (דמו)</button>
+
+        <div id="alertBox" class="alert alert-warning mt-3" style="display:none; font-size:18px;">
+            ⚠️ התרעה: זוהתה חריגה/סיכון סביבתי. מומלץ לבדוק את המצב.
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <a class="btn btn-link" href="/Prototype/Services">חזרה לשירותים</a>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function playAlert() {
+            document.getElementById('alertBox').style.display = 'block';
+            // דמו בלבד – אם תרצי באמת קול, נוסיף Audio/JS.
+        }
+    </script>
+}

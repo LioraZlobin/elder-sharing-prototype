@@ -2,20 +2,22 @@
 {
     public class MiniRegisterViewModel
     {
-        // רמה 1 – בסיסי
-        public string? FirstName { get; set; }
-        public string? Language { get; set; }
-        public int? Age { get; set; }
+        // Level 2 (B) + Level 3 (C)
+        public string? PersonalIdNumber { get; set; }   // ת"ז אישי
+        public string? Hmo { get; set; }                // קופת חולים
+        public string? Phone1 { get; set; }             // טלפון
+        public string? Phone2 { get; set; }             // טלפון נוסף (אופציונלי)
 
-
-        // רמה 2 – בינוני
+        // תרופות
         public List<string> SelectedMedications { get; set; } = new();
+        public string? FixedMedications { get; set; }
 
-        public string? FixedMedications { get; set; } // תרופות קבועות
-        public List<string> SelectedDiseases { get; set; } = new();
-        public string? FixedDiseases { get; set; } // מחלות
+        // איש קשר לחירום (B + C)
+        public string? EmergencyContactName { get; set; }
+        public string? EmergencyContactPhone { get; set; }
 
-        // רמה 3 – גבוה
-        public string? IdNumber { get; set; } // ת"ז לזיהוי מול קופת חולים (דמו)
+        // Level 3 (C)
+        public bool MicConsent { get; set; }
+        public bool CameraConsent { get; set; }
     }
 }

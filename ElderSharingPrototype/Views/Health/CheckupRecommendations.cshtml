@@ -1,0 +1,55 @@
+﻿@using ElderSharingPrototype.Models
+@using Microsoft.AspNetCore.Http
+
+@{
+    ViewData["Title"] = "המלצה לביקור רופא / בדיקות שגרתיות";
+
+    var ui = Context.Session.GetInt32("UiAdaptation") ?? (int)UiAdaptation.NotAdapted;
+    bool isAdapted = ui == (int)UiAdaptation.Adapted;
+
+    // הקטנה עדינה (בערך 15–20%)
+    var titleStyle = isAdapted
+        ? "font-size:56px !important; line-height:1.25 !important; font-weight:800 !important;"
+        : "font-size:32px; line-height:1.3; font-weight:700;";
+
+    var alertStyle = isAdapted
+        ? "font-size:28px !important; line-height:1.75 !important; padding:20px 22px !important;"
+        : "font-size:18px; line-height:1.6;";
+
+    var cardStyle = isAdapted
+        ? "font-size:28px !important; line-height:1.85 !important; padding:24px 26px !important;"
+        : "font-size:18px; line-height:1.6;";
+
+    var liStyle = isAdapted
+        ? "margin-bottom:14px !important;"
+        : "margin-bottom:8px;";
+
+    var backLinkStyle = isAdapted
+        ? "font-size:24px !important; font-weight:700 !important;"
+        : "font-size:16px;";
+}
+
+<div class="container py-4" style="max-width: 900px;">
+
+    <h1 class="mb-4" style="@titleStyle">
+        המלצה לביקור רופא / בדיקות שגרתיות
+    </h1>
+
+    <div class="alert alert-info mb-4" style="@alertStyle">
+        זהו דף דמו להצגת המלצות כלליות ללא איסוף מידע רפואי אישי.
+    </div>
+
+    <div class="card" style="@cardStyle">
+        <ul class="mb-0">
+            <li style="@liStyle">מומלץ לבצע ביקור רופא משפחה לפחות אחת לשנה.</li>
+            <li style="@liStyle">בדיקות שגרתיות נפוצות: לחץ דם, סוכר, כולסטרול.</li>
+            <li style="@liStyle">אם יש שינוי בהרגשה — מומלץ להתייעץ עם רופא/ה.</li>
+        </ul>
+    </div>
+
+    <div class="mt-5">
+        <a class="btn btn-link" href="/Prototype/Services" style="@backLinkStyle">
+            חזרה לשירותים
+        </a>
+    </div>
+</div>

@@ -2,6 +2,11 @@
 @{
     ViewData["Title"] = "זימון תור לרופא";
     var requests = ViewBag.Requests as List<AppointmentRequest> ?? new List<AppointmentRequest>();
+
+    var areas = new List<string>
+    {
+        "רפואת משפחה", "עור", "אא\"ג", "אורתופדיה", "עיניים", "קרדיולוגיה", "אנדוקרינולוגיה", "אחר"
+    };
 }
 
 <div class="container py-4" style="max-width: 900px;">
@@ -15,7 +20,20 @@
         <h2 class="h5 mb-3">בקשת תור</h2>
 
         <div class="row g-3">
-            <div class="col-12">
+
+            <div class="col-12 col-md-6">
+                <label class="form-label" style="font-size:18px;">תחום טיפול</label>
+                <select name="treatmentArea" class="form-select form-select-lg">
+                    <option value="">בחר/י</option>
+                    @foreach (var a in areas)
+                    {
+                        <option value="@a">@a</option>
+                    }
+                </select>
+                <span class="text-danger">@Html.ValidationMessage("treatmentArea")</span>
+            </div>
+
+            <div class="col-12 col-md-6">
                 <label class="form-label" style="font-size:18px;">סיבה לפנייה</label>
                 <input name="reason" class="form-control form-control-lg" placeholder="למשל: כאבי ראש, בדיקה שגרתית..." />
                 <span class="text-danger">@Html.ValidationMessage("reason")</span>
@@ -55,7 +73,7 @@
             {
                 <div class="list-group-item d-flex justify-content-between align-items-center">
                     <div style="font-size:18px;">
-                        <strong>@r.Reason</strong>
+                        <strong>@r.TreatmentArea</strong> • @r.Reason
                         <div class="text-muted">
                             @r.PreferredDate @r.PreferredTime
                             • נוצר: @r.CreatedAt.ToString("dd/MM/yyyy HH:mm")

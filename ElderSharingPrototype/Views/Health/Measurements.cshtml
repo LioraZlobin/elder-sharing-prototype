@@ -1,141 +1,284 @@
 ﻿@using System.Linq
-@model List<ElderSharingPrototype.Models.Health.VitalMeasurement>
+@using ElderSharingPrototype.Models.Health
+@model List<VitalMeasurementEntity>
 
 @{
-    ViewData["Title"] = "הזנת מדידות";
+    ViewData["Title"] = "מדידות אוטומטיות";
 
-    var bloodPressureHistory = (Model ?? new List<ElderSharingPrototype.Models.Health.VitalMeasurement>())
+    var level = (string)(ViewBag.Level ?? "B"); // B / C (בפועל השירות פתוח ל-B/C בלבד)
+    bool isLevelC = level == "C";
+
+    var bloodPressureHistory = (Model ?? new List<VitalMeasurementEntity>())
         .Where(x => x.Kind == "BloodPressure")
         .OrderByDescending(x => x.MeasuredAt)
         .ToList();
 
-    var sugarHistory = (Model ?? new List<ElderSharingPrototype.Models.Health.VitalMeasurement>())
+    var sugarHistory = (Model ?? new List<VitalMeasurementEntity>())
         .Where(x => x.Kind == "Sugar")
         .OrderByDescending(x => x.MeasuredAt)
         .ToList();
 }
 
-<div class="container py-4" style="max-width: 900px;">
-    <h1 class="mb-3">הזנת מדידות</h1>
-    <div class="alert alert-info" style="font-size:18px;">
-        איננו שומרים מידע מעבר לנדרש. הנתונים נשארים במכשיר.
-    </div>
+<div class="container py-4 measurements-page" style="max-width: 900px;">
+    <h1 class="mb-3">מדידות אוטומטיות (WiFi)</h1>
 
-    <!-- טפסים להזנה -->
-    <div class="row g-3">
-        <div class="col-12 col-md-6">
-            <form method="post" action="/Health/AddBloodPressure" class="card p-3">
-                <h2 class="h5">לחץ דם</h2>
+    @if (!isLevelC)
+    {
+        <div class="alert alert-warning" style="font-size:18px;">
+            <strong>רמה 2 – תצוגה חד־פעמית:</strong>
+            המדדים נטענים אוטומטית מהמכשירים דרך WiFi ומוצגים על המסך בלבד.
+            <br />
+            <u>המדדים לא נשמרים</u> ואינם מופיעים בהיסטוריה.
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-info" style="font-size:18px;">
+            <strong>רמה 3 – שמירה מלאה:</strong>
+            המדדים נטענים אוטומטית מהמכשירים דרך WiFi, נשמרים במסד הנתונים ומוצגים בהיסטוריה.
+        </div>
+    }
 
-                <div class="row g-2">
-                    <div class="col-6">
-                        <label class="form-label">עליון</label>
-                        <input name="systolic" type="number" class="form-control form-control-lg" />
-                        <span class="text-danger">@Html.ValidationMessage("systolic")</span>
-                    </div>
+    <!-- ✅ כרטיס "מכשירים מחוברים" + קריאה אוטומטית -->
+    <div class="card p-3 mb-3" style="border-radius:16px;">
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+            <div>
+                <div class="device-title">סטטוס חיבור מכשירים</div>
+                <div class="text-muted device-subtitle">הדמיה של מכשירים המחוברים ל-WiFi ומדווחים לרובוט</div>
+            </div>
 
-                    <div class="col-6">
-                        <label class="form-label">תחתון</label>
-                        <input name="diastolic" type="number" class="form-control form-control-lg" />
-                        <span class="text-danger">@Html.ValidationMessage("diastolic")</span>
-                    </div>
+            <div class="d-flex gap-2 flex-wrap">
+                <button id="btnAutoRead" type="button" class="btn btn-success btn-lg">
+                    📶 התחל קריאה אוטומטית (דמו)
+                </button>
 
-                    <div class="col-12">
-                        <label class="form-label">הערה</label>
-                        <input name="notes" class="form-control form-control-lg" placeholder="אופציונלי" />
-                    </div>
+                <button id="btnAutoReadHigh" type="button" class="btn btn-outline-danger btn-lg">
+                    ⚠️ סימולציית חריגה (דמו)
+                </button>
+            </div>
+        </div>
+
+        <hr />
+
+        <div class="row g-2" style="font-size:18px;">
+            <div class="col-12 col-md-6">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>מכשיר לחץ דם</div>
+                    <div><span class="badge bg-success">מחובר</span></div>
                 </div>
-
-                <button class="btn btn-primary btn-lg mt-3" type="submit">שמור</button>
-            </form>
-        </div>
-
-        <div class="col-12 col-md-6">
-            <form method="post" action="/Health/AddSugar" class="card p-3">
-                <h2 class="h5">סוכר</h2>
-
-                <label class="form-label">mg/dL</label>
-                <input name="sugarMgDl" type="number" class="form-control form-control-lg" />
-                <span class="text-danger">@Html.ValidationMessage("sugarMgDl")</span>
-
-                <label class="form-label mt-2">הערה</label>
-                <input name="notes" class="form-control form-control-lg" placeholder="אופציונלי" />
-
-                <button class="btn btn-primary btn-lg mt-3" type="submit">שמור</button>
-            </form>
-        </div>
-    </div>
-
-    <hr class="my-4" />
-
-    <!-- היסטוריות נפרדות -->
-    <h2 class="h4 mb-3">היסטוריית מדידות</h2>
-
-    <div class="row g-3">
-        <!-- שמאל: לחץ דם -->
-        <div class="col-12 col-md-6">
-            <div class="card p-3 h-100">
-                <h3 class="h5 mb-3">לחץ דם</h3>
-
-                @if (!bloodPressureHistory.Any())
-                {
-                    <div class="text-muted" style="font-size:18px;">אין עדיין מדידות לחץ דם.</div>
-                }
-                else
-                {
-                    <div class="list-group">
-                        @foreach (var m in bloodPressureHistory)
-                        {
-                            <div class="list-group-item">
-                                <div style="font-size:18px;">
-                                    <strong>@($"{m.Systolic}/{m.Diastolic}")</strong>
-                                    <span class="text-muted"> – @m.MeasuredAt.ToString("dd/MM/yyyy HH:mm")</span>
-                                </div>
-
-                                @if (!string.IsNullOrWhiteSpace(m.Notes))
-                                {
-                                    <div class="text-muted">@m.Notes</div>
-                                }
-                            </div>
-                        }
-                    </div>
-                }
+            </div>
+            <div class="col-12 col-md-6">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>מד סוכר</div>
+                    <div><span class="badge bg-success">מחובר</span></div>
+                </div>
             </div>
         </div>
 
-        <!-- ימין: סוכר -->
-        <div class="col-12 col-md-6">
-            <div class="card p-3 h-100">
-                <h3 class="h5 mb-3">סוכר</h3>
+        <!-- אזור טעינה -->
+        <div id="autoReadPanel" class="mt-3" style="display:none;">
+            <div id="autoReadStep" style="font-size:18px; font-weight:700;">מתחיל קריאה...</div>
 
-                @if (!sugarHistory.Any())
-                {
-                    <div class="text-muted" style="font-size:18px;">אין עדיין מדידות סוכר.</div>
-                }
-                else
-                {
-                    <div class="list-group">
-                        @foreach (var m in sugarHistory)
-                        {
-                            <div class="list-group-item">
-                                <div style="font-size:18px;">
-                                    <strong>@m.SugarMgDl</strong> <span class="text-muted">mg/dL</span>
-                                    <span class="text-muted"> – @m.MeasuredAt.ToString("dd/MM/yyyy HH:mm")</span>
-                                </div>
-
-                                @if (!string.IsNullOrWhiteSpace(m.Notes))
-                                {
-                                    <div class="text-muted">@m.Notes</div>
-                                }
-                            </div>
-                        }
-                    </div>
-                }
+            <div class="progress mt-2" style="height:14px; border-radius:999px;">
+                <div id="autoReadBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%"></div>
             </div>
+
+            @if (!isLevelC)
+            {
+                <div class="mt-3"
+                     style="
+                        font-size:20px;
+                        font-weight:800;
+                        color:#92400e;
+                        text-align:center;
+                     ">
+                    תצוגת מדידה חד־פעמית (לא נשמרת)
+                </div>
+            }
+
+
+            <div id="autoReadResult"
+                 class="mt-3 p-3"
+                 style="
+                    font-size:22px;
+                    font-weight:700;
+                    border-radius:14px;
+                    background:#f8fafc;
+                    border:2px dashed #94a3b8;
+                    color:#0f172a;
+                    text-align:center;
+                 ">
+            </div>
+
+
+            <!-- ✅ ברמה 2: הסבר שזה חד פעמי -->
+            @if (!isLevelC)
+            {
+                <div class="mt-2" style="font-size:14px; color:#6b7280;">
+                    * ברמה 2 הנתונים מוצגים כאן בלבד ולא נשמרים.
+                </div>
+            }
         </div>
     </div>
+
+    <!-- ✅ היסטוריה רק ברמה 3 -->
+    @if (isLevelC)
+    {
+        <hr class="my-4" />
+
+        <h2 class="h4 mb-3">היסטוריית מדידות (נשמר במסד נתונים)</h2>
+
+        <div class="row g-3">
+            <!-- שמאל: לחץ דם -->
+            <div class="col-12 col-md-6">
+                <div class="card p-3 h-100" style="border-radius:16px;">
+                    <h3 class="h5 mb-3">לחץ דם</h3>
+
+                    @if (!bloodPressureHistory.Any())
+                    {
+                        <div class="text-muted" style="font-size:18px;">אין עדיין מדידות לחץ דם.</div>
+                    }
+                    else
+                    {
+                        <div class="list-group">
+                            @foreach (var m in bloodPressureHistory)
+                            {
+                                <div class="list-group-item">
+                                    <div style="font-size:18px;">
+                                        <strong>@($"{m.Systolic}/{m.Diastolic}")</strong>
+                                        <span class="text-muted"> – @m.MeasuredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                                    </div>
+
+                                    @if (!string.IsNullOrWhiteSpace(m.Notes))
+                                    {
+                                        <div class="text-muted">@m.Notes</div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- ימין: סוכר -->
+            <div class="col-12 col-md-6">
+                <div class="card p-3 h-100" style="border-radius:16px;">
+                    <h3 class="h5 mb-3">סוכר</h3>
+
+                    @if (!sugarHistory.Any())
+                    {
+                        <div class="text-muted" style="font-size:18px;">אין עדיין מדידות סוכר.</div>
+                    }
+                    else
+                    {
+                        <div class="list-group">
+                            @foreach (var m in sugarHistory)
+                            {
+                                <div class="list-group-item">
+                                    <div style="font-size:18px;">
+                                        <strong>@m.SugarMgDl</strong> <span class="text-muted">mg/dL</span>
+                                        <span class="text-muted"> – @m.MeasuredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                                    </div>
+
+                                    @if (!string.IsNullOrWhiteSpace(m.Notes))
+                                    {
+                                        <div class="text-muted">@m.Notes</div>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
 
     <div class="mt-4">
         <a class="btn btn-link" href="/Prototype/Services">חזרה לשירותים</a>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        const level = "@level"; // "B" / "C"
+
+        const btnAutoRead = document.getElementById("btnAutoRead");
+        const btnAutoReadHigh = document.getElementById("btnAutoReadHigh");
+
+        const panel = document.getElementById("autoReadPanel");
+        const stepEl = document.getElementById("autoReadStep");
+        const bar = document.getElementById("autoReadBar");
+        const resultEl = document.getElementById("autoReadResult");
+
+        let running = false;
+
+        function setProgress(pct, text) {
+            bar.style.width = pct + "%";
+            if (text) stepEl.innerText = text;
+        }
+
+        async function startAutoRead(scenario) {
+            if (running) return;
+            running = true;
+
+            btnAutoRead.disabled = true;
+            btnAutoReadHigh.disabled = true;
+
+            panel.style.display = "block";
+            resultEl.innerText = "";
+            setProgress(0, "מתחיל קריאה מהמכשירים...");
+
+            const steps = [
+                { pct: 18, text: "קורא לחץ דם מהמכשיר..." },
+                { pct: 45, text: "קורא רמת סוכר מהמכשיר..." },
+                { pct: 70, text: "מאמת נתונים..." },
+                { pct: 88, text: "שולח לרובוט ולמערכת..." }
+            ];
+
+            for (const s of steps) {
+                await new Promise(r => setTimeout(r, 900));
+                setProgress(s.pct, s.text);
+            }
+
+            try {
+                // ✅ השרת מחליט אם לשמור DB לפי הרמה (B: לא, C: כן)
+                const resp = await fetch("/Health/PullDeviceMeasurements?scenario=" + encodeURIComponent(scenario), {
+                    method: "POST"
+                });
+
+                const data = await resp.json();
+
+                if (!data || !data.ok) {
+                    throw new Error((data && data.message) ? data.message : "שגיאה בקבלת נתונים");
+                }
+
+                setProgress(100, "המדדים נקלטו בהצלחה ✅");
+                resultEl.innerText =
+                    `לחץ דם: ${data.bloodPressure.systolic}/${data.bloodPressure.diastolic} | ` +
+                    `סוכר: ${data.sugar.mgDl} mg/dL | ` +
+                    `שעה: ${data.measuredAt}`;
+
+                // ✅ ברמה 3 נרענן כדי לראות היסטוריה מתעדכנת
+                if (level === "C") {
+                    setTimeout(() => location.reload(), 900);
+                } else {
+                    // ברמה 2 נשאיר תצוגה חד-פעמית בלי רענון
+                    btnAutoRead.disabled = false;
+                    btnAutoReadHigh.disabled = false;
+                    running = false;
+                }
+
+            } catch (e) {
+                setProgress(100, "לא הצלחנו לקרוא מדדים ❌");
+                resultEl.innerText = "נסי שוב בעוד רגע. (דמו)";
+
+                btnAutoRead.disabled = false;
+                btnAutoReadHigh.disabled = false;
+                running = false;
+            }
+        }
+
+        btnAutoRead?.addEventListener("click", () => startAutoRead("normal"));
+        btnAutoReadHigh?.addEventListener("click", () => startAutoRead("high"));
+    </script>
+}

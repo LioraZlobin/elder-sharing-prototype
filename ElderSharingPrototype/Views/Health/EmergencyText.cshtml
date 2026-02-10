@@ -1,0 +1,57 @@
+﻿@model ElderSharingPrototype.Models.Health.EmergencyTextViewModel
+
+@{
+    ViewData["Title"] = "שיחת חירום - הודעת טקסט";
+}
+
+<div class="container py-4" style="max-width: 900px;">
+    <h1 class="mb-3">שיחת חירום – הודעת טקסט</h1>
+
+    <div class="alert alert-info">
+        כאן ניתן להכין הודעת חירום כתובה לשליחה לאיש קשר/גורם רלוונטי.
+    </div>
+
+    @if (TempData["MsgOk"] != null)
+    {
+        <div class="alert alert-success">
+            @TempData["MsgOk"]
+        </div>
+    }
+
+    <form asp-action="EmergencyText" method="post" class="card p-3 shadow-sm">
+        <div class="row g-3">
+            <div class="col-md-6">
+                <label asp-for="FullName" class="form-label"></label>
+                <input asp-for="FullName" class="form-control" />
+                <span asp-validation-for="FullName" class="text-danger"></span>
+            </div>
+
+            <div class="col-md-6">
+                <label asp-for="PhoneNumber" class="form-label"></label>
+                <input asp-for="PhoneNumber" class="form-control" />
+                <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+            </div>
+
+            <div class="col-12">
+                <label asp-for="Address" class="form-label"></label>
+                <input asp-for="Address" class="form-control" />
+                <span asp-validation-for="Address" class="text-danger"></span>
+            </div>
+
+            <div class="col-12">
+                <label asp-for="MessageText" class="form-label"></label>
+                <textarea asp-for="MessageText" rows="4" class="form-control"></textarea>
+                <span asp-validation-for="MessageText" class="text-danger"></span>
+            </div>
+
+            <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-danger">שלח הודעה</button>
+                <a class="btn btn-outline-secondary" href="/Prototype/Services">חזרה לשירותים</a>
+            </div>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,358 +1,556 @@
-﻿using ElderSharingPrototype.Models;
+﻿using ElderSharingPrototype.Data;
+using ElderSharingPrototype.Models;
 using Microsoft.AspNetCore.Mvc;
+using ElderSharingPrototype.Helpers;
 
 namespace ElderSharingPrototype.Controllers
 {
     public class PrototypeController : Controller
     {
-        private static List<string> GetDiseaseCatalog()
+        private readonly AppDbContext _db;
+
+        public PrototypeController(AppDbContext db)
         {
-            return new List<string>
-    {
-        // --- א ---
-        "אסתמה", "אלרגיות", "אי ספיקת לב", "אי ספיקת כליות", "אוסטאופורוזיס", "אנמיה", "אפילפסיה",
-        "ארתריטיס (דלקת מפרקים)", "אי-סדירות בקצב הלב",
+            _db = db;
+        }
 
-        // --- ב ---
-        "ברונכיטיס כרונית", "בעיות בלוטת התריס", "בעיות גב כרוניות",
+        // -----------------------------
+        // Helpers
+        // -----------------------------
+        private int? GetParticipantId() => HttpContext.Session.GetInt32("ParticipantId");
 
-        // --- ג ---
-        "גאוט", "גלאוקומה", "גסטריטיס", "גרד כרוני",
+        private Participant? GetCurrentParticipant(int participantId)
+            => _db.Participants.FirstOrDefault(p => p.Id == participantId);
 
-        // --- ד ---
-        "דמנציה", "דיכאון", "דלקת מפרקים שגרונית", "דלקת ריאות חוזרת", "דום נשימה בשינה", "דלקת כרונית במעי (IBD)",
+        private void SetUiFlagsToViewBag()
+        {
+            ViewBag.GroupNumber = HttpContext.Session.GetInt32("GroupNumber") ?? 0;
+            ViewBag.UiAdaptation = HttpContext.Session.GetInt32("UiAdaptation") ?? (int)UiAdaptation.NotAdapted;
+            ViewBag.ExplanationMode = HttpContext.Session.GetInt32("ExplanationMode") ?? (int)ExplanationMode.WithExplanation;
+        }
 
-        // --- ה ---
-        "היפרכולסטרולמיה (כולסטרול גבוה)", "היפרלחץ דם", "היפוגליקמיה (נפילות סוכר)",
+        private void LogAction(int participantId, string action, string? meta = null)
+        {
+            _db.InteractionLogs.Add(new InteractionLog
+            {
+                ParticipantId = participantId,
+                Action = action,
+                Meta = meta
+            });
+            _db.SaveChanges();
+        }
 
-        // --- ו ---
-        "ורטיגו (סחרחורות)",
+        private PrivacyLevel MapSharingLevelToPrivacyLevel(string sharingLevel)
+        {
+            return sharingLevel switch
+            {
+                "A" => PrivacyLevel.Level1,
+                "B" => PrivacyLevel.Level2,
+                "C" => PrivacyLevel.Level3,
+                _ => PrivacyLevel.Level1
+            };
+        }
 
-        // --- ז ---
-        "זיהומים חוזרים בדרכי השתן", "זיהום כרוני",
+        private string MapPrivacyLevelToSharingLevel(PrivacyLevel level)
+        {
+            return level switch
+            {
+                PrivacyLevel.Level1 => "A",
+                PrivacyLevel.Level2 => "B",
+                PrivacyLevel.Level3 => "C",
+                _ => "A"
+            };
+        }
 
-        // --- ח ---
-        "חרדה", "חסימת עורקים", "חולשת שרירים כרונית", "חומציות יתר (רפלוקס)",
-
-        // --- ט ---
-        "טחורים", "טרשת נפוצה", "טרשת עורקים", "טינטון",
-
-        // --- י ---
-        "יתר לחץ דם", "יתר פעילות בלוטת התריס", "תת פעילות בלוטת התריס",
-
-        // --- כ ---
-        "כיב קיבה", "כאבי גב כרוניים", "כאבי מפרקים",
-
-        // --- ל ---
-        "לחץ דם גבוה", "לופוס", "ליקוי שמיעה", "ליקוי ראייה",
-
-        // --- מ ---
-        "מחלת לב איסכמית", "מחלת ריאות חסימתית כרונית (COPD)", "מחלת כליות כרונית", "מחלת כבד שומני",
-        "מיגרנה", "מחלות עור",
-
-        // --- נ ---
-        "נשירת שיער", "נפילות חוזרות", "נוירופתיה (פגיעה עצבית)",
-
-        // --- ס ---
-        "סוכרת סוג 1", "סוכרת סוג 2", "סינוסיטיס כרונית", "סרטן", "סכיזופרניה",
-
-        // --- ע ---
-        "עצירות כרונית", "עייפות כרונית", "עיוורון חלקי",
-
-        // --- פ ---
-        "פרקינסון", "פסוריאזיס", "פיברומיאלגיה",
-
-        // --- צ ---
-        "צליאק", "צפדינה", "צנתור/סטנט בעבר",
-
-        // --- ק ---
-        "קרישיות יתר", "קטרקט", "קוליטיס", "קוצר נשימה כרוני",
-
-        // --- ר ---
-        "רפלוקס (GERD)", "רעידות", "רגישות ללקטוז",
-
-        // --- ש ---
-        "שבץ מוחי בעבר", "שומנים גבוהים", "שברים חוזרים", "שינה לא סדירה",
-
-        // --- ת ---
-        "תסמונת המעי הרגיז (IBS)", "תסמונת מטבולית", "תעוקת חזה"
-    };
+        private void SyncSharingLevelFromDbToSessionIfExists(int participantId)
+        {
+            var p = GetCurrentParticipant(participantId);
+            if (p?.CurrentPrivacyLevel != null)
+                HttpContext.Session.SetString("SharingLevel", MapPrivacyLevelToSharingLevel(p.CurrentPrivacyLevel.Value));
         }
 
         private static List<string> GetMedicationCatalog()
         {
             return new List<string>
-        {
-            // --- א ---
-            "אקמול", "אדויל", "אספירין", "אומפרדקס", "אומפרזול", "אנטיהיסטמין",
-
-            // --- ב ---
-            "ברופן", "בטאקורטן", "ביסופרולול", "ברזל", "בודיקורט",
-
-            // --- ג ---
-            "גלוקופאג׳", "גסטרו", "ג׳לוסיל", "גאבאפנטין", "גינרה",
-
-            // --- ד ---
-            "דקסמול", "דקסמול קולד", "דופסטון", "דיאמיקרון", "דוקסילין",
-
-            // --- ה ---
-            "הידרוכלורותיאזיד", "הידרוקסיזין", "הפארין",
-
-            // --- ו ---
-            "ויטמין D", "ויטמין B12", "וולטרן", "ורמוקס",
-
-            // --- ז ---
-            "זודורם", "זירקט", "זינאט",
-
-            // --- ח ---
-            "חומצה פולית",
-
-            // --- ט ---
-            "טאמסולין", "טמסולוסין", "טראמדקס", "טוביאז",
-
-            // --- י ---
-            "יאז", "יוויטל",
-
-            // --- כ ---
-            "כדורי ברזל", "כדורי סידן",
-
-            // --- ל ---
-            "לוסק", "לוריוון", "לורטאדין", "לבותרוקסין", "לנטוס",
-
-            // --- מ ---
-            "מטפורמין", "מוקסיפן", "מגנזיום", "מיקרופירין", "מונולונג",
-
-            // --- נ ---
-            "נורופן", "נקסיום", "נורמלקס", "נורמיטן",
-
-            // --- ס ---
-            "סטטינים", "סימוביל", "סימבסטטין", "סולפיריד", "סולפיד",
-
-            // --- פ ---
-            "פראמין", "פרדניזון", "פרדניזולון", "פלביקס", "פנרגן",
-
-            // --- צ ---
-            "ציפרודקס", "ציפרופלוקסצין", "ציפרודין", "ציפרלקס", "צנטרום",
-
-            // --- ק ---
-            "קונקור", "קלונקס", "קלקסן", "קווינפריל", "קולכיצין",
-
-            // --- ר ---
-            "ריטלין", "רוקסט", "רניטידין", "רמרון",
-
-            // --- ת ---
-            "תירוקסין", "תמיפלו"
-        };
+            {
+                "אקמול","אדויל","אספירין","אומפרדקס","אומפרזול","אנטיהיסטמין",
+                "ברופן","בטאקורטן","ביסופרולול","ברזל","בודיקורט",
+                "גלוקופאג׳","גסטרו","ג׳לוסיל","גאבאפנטין","גינרה",
+                "דקסמול","דקסמול קולד","דופסטון","דיאמיקרון","דוקסילין",
+                "הידרוכלורותיאזיד","הידרוקסיזין","הפארין",
+                "ויטמין D","ויטמין B12","וולטרן","ורמוקס",
+                "זודורם","זירקט","זינאט",
+                "חומצה פולית",
+                "טאמסולין","טמסולוסין","טראמדקס","טוביאז",
+                "יאז","יוויטל",
+                "כדורי ברזל","כדורי סידן",
+                "לוסק","לוריוון","לורטאדין","לבותרוקסין","לנטוס",
+                "מטפורמין","מוקסיפן","מגנזיום","מיקרופירין","מונולונג",
+                "נורופן","נקסיום","נורמלקס","נורמיטן",
+                "סטטינים","סימוביל","סימבסטטין","סולפיריד","סולפיד",
+                "פראמין","פרדניזון","פרדניזולון","פלביקס","פנרגן",
+                "ציפרודקס","ציפרופלוקסצין","ציפרודין","ציפרלקס","צנטרום",
+                "קונקור","קלונקס","קלקסן","קווינפריל","קולכיצין",
+                "ריטלין","רוקסט","רניטידין","רמרון",
+                "תירוקסין","תמיפלו"
+            };
         }
-        // מסך 1 – הסבר
+
+        // -----------------------------
+        // Intro
+        // -----------------------------
         public IActionResult Intro()
         {
+            var pid = GetParticipantId();
+            if (pid == null)
+                return RedirectToAction("Login", "Experiment");
+
+            SetUiFlagsToViewBag();
+            LogAction(pid.Value, "View:Intro");
             return View();
         }
 
-        // מסך 2 – בחירת רמה
+        // -----------------------------
+        // Choose
+        // -----------------------------
         [HttpGet]
         public IActionResult Choose()
         {
+            var pid = GetParticipantId();
+            if (pid == null)
+                return RedirectToAction("Login", "Experiment");
+
+            SetUiFlagsToViewBag();
+            SyncSharingLevelFromDbToSessionIfExists(pid.Value);
+
+            LogAction(pid.Value, "View:Choose");
             return View();
         }
 
-        // שמירת רמה והמשך למסך הגדרות לפי רמה
         [HttpPost]
         public IActionResult Choose(string level)
         {
-            HttpContext.Session.SetString("SharingLevel", level ?? "A");
+            var pid = GetParticipantId();
+            if (pid == null)
+                return RedirectToAction("Login", "Experiment");
+
+            var chosen = (level ?? "A").Trim().ToUpperInvariant();
+            if (chosen != "A" && chosen != "B" && chosen != "C")
+                chosen = "A";
+
+            HttpContext.Session.SetString("SharingLevel", chosen);
+
+            var participant = GetCurrentParticipant(pid.Value);
+            if (participant != null)
+            {
+                participant.CurrentPrivacyLevel = MapSharingLevelToPrivacyLevel(chosen);
+                _db.SaveChanges();
+            }
+
+            LogAction(pid.Value, "SelectPrivacyLevel", $"Level={chosen}");
             return RedirectToAction("RegisterMini");
         }
 
-        // מסך 3 – הגדרות לפי רמה (3A/3B/3C באותו View)
+        // -----------------------------
+        // RegisterMini (GET)
+        // -----------------------------
         [HttpGet]
         public IActionResult RegisterMini()
         {
+            var pid = GetParticipantId();
+            if (pid == null)
+                return RedirectToAction("Login", "Experiment");
+
+            SyncSharingLevelFromDbToSessionIfExists(pid.Value);
+
+            var p = GetCurrentParticipant(pid.Value);
+            if (p != null)
+            {
+                // Session sync if missing
+                SetIfMissing("PersonalIdNumber", p.PersonalIdNumber);
+                SetIfMissing("Hmo", p.Hmo);
+                SetIfMissing("Phone1", p.Phone1);
+                SetIfMissing("Phone2", p.Phone2);
+                SetIfMissing("FixedMedications", p.FixedMedications);
+                SetIfMissing("EmergencyContactName", p.EmergencyContactName);
+                SetIfMissing("EmergencyContactPhone", p.EmergencyContactPhone);
+
+                HttpContext.Session.SetString("MicConsent", p.MicConsent ? "true" : "false");
+                HttpContext.Session.SetString("CameraConsent", p.CameraConsent ? "true" : "false");
+
+                if (string.IsNullOrWhiteSpace(HttpContext.Session.GetString("SharingLevel")) && p.CurrentPrivacyLevel.HasValue)
+                    HttpContext.Session.SetString("SharingLevel", MapPrivacyLevelToSharingLevel(p.CurrentPrivacyLevel.Value));
+            }
+
+            SetUiFlagsToViewBag();
+
             var level = HttpContext.Session.GetString("SharingLevel") ?? "A";
             ViewBag.Level = level;
-
-            // ✅ שולחים ל-View את קטלוג התרופות
             ViewBag.MedCatalog = GetMedicationCatalog();
-            ViewBag.DiseaseCatalog = GetDiseaseCatalog();
+            ViewBag.HmoList = new List<string> { "כללית", "מכבי", "מאוחדת", "לאומית" };
 
-
-            // ✅ מחלות ותרופות - שולפים בחירות קודמות אם קיימות
             var savedMeds = HttpContext.Session.GetString("FixedMedications") ?? "";
-            var selectedMeds = savedMeds.Split(',', System.StringSplitOptions.RemoveEmptyEntries)
-                                        .Select(x => x.Trim()).ToList();
-
-            var savedDiseases = HttpContext.Session.GetString("FixedDiseases") ?? "";
-            var selectedDiseases = savedDiseases.Split(',', System.StringSplitOptions.RemoveEmptyEntries)
-                                                .Select(x => x.Trim()).ToList();
+            var selectedMeds = savedMeds
+                .Split(',', StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .ToList();
 
             var vm = new MiniRegisterViewModel
             {
-                FirstName = HttpContext.Session.GetString("FirstName"),
-                Language = HttpContext.Session.GetString("Language"),
-                Age = int.TryParse(HttpContext.Session.GetString("Age"), out var a) ? a : null,
+                PersonalIdNumber = HttpContext.Session.GetString("PersonalIdNumber"),
+                Hmo = HttpContext.Session.GetString("Hmo"),
+                Phone1 = HttpContext.Session.GetString("Phone1"),
+                Phone2 = HttpContext.Session.GetString("Phone2"),
+
                 FixedMedications = savedMeds,
                 SelectedMedications = selectedMeds,
-                FixedDiseases = savedDiseases,
-                SelectedDiseases = selectedDiseases,
-                IdNumber = HttpContext.Session.GetString("IdNumber")
+
+                // נשארים ב-VM כדי לא לשבור קומפילציה, אבל לא מחייבים אותם במסך הזה
+                EmergencyContactName = HttpContext.Session.GetString("EmergencyContactName"),
+                EmergencyContactPhone = HttpContext.Session.GetString("EmergencyContactPhone"),
+
+                MicConsent = (HttpContext.Session.GetString("MicConsent") ?? "false") == "true",
+                CameraConsent = (HttpContext.Session.GetString("CameraConsent") ?? "false") == "true"
             };
 
+            LogAction(pid.Value, "View:RegisterMini", $"Level={level}");
             return View(vm);
         }
 
+        private void SetIfMissing(string key, string? value)
+        {
+            if (string.IsNullOrWhiteSpace(HttpContext.Session.GetString(key)) && !string.IsNullOrWhiteSpace(value))
+                HttpContext.Session.SetString(key, value);
+        }
 
-        // הרשמה/הגדרות – POST
+        // -----------------------------
+        // RegisterMini (POST)
+        // -----------------------------
         [HttpPost]
+        [ValidateAntiForgeryToken]
         public IActionResult RegisterMini(MiniRegisterViewModel model)
         {
+            var pid = GetParticipantId();
+            if (pid == null)
+                return RedirectToAction("Login", "Experiment");
+
+            SetUiFlagsToViewBag();
+
             var level = HttpContext.Session.GetString("SharingLevel") ?? "A";
+            ViewBag.Level = level;
+            ViewBag.MedCatalog = GetMedicationCatalog();
+            ViewBag.HmoList = new List<string> { "כללית", "מכבי", "מאוחדת", "לאומית" };
 
-            // ✅ ולידציה לפי דרישות חדשות
-            if (string.IsNullOrWhiteSpace(model.FirstName))
-                ModelState.AddModelError(nameof(model.FirstName), "נא להזין שם.");
+            // -------- Validations --------
+            // A: אין מה למלא
+            if (level == "B" || level == "C")
+            {
+                var pidNum = (model.PersonalIdNumber ?? "").Trim();
+                if (pidNum.Length != 9 || !pidNum.All(char.IsDigit))
+                    ModelState.AddModelError(nameof(model.PersonalIdNumber), "נא להזין תעודת זהות תקינה (9 ספרות).");
 
-            if (!model.Age.HasValue || model.Age < 60 || model.Age > 120)
-                ModelState.AddModelError(nameof(model.Age), "נא להזין גיל תקין (60–120).");
+                if (string.IsNullOrWhiteSpace(model.Hmo))
+                    ModelState.AddModelError(nameof(model.Hmo), "נא לבחור קופת חולים.");
 
-            if (string.IsNullOrWhiteSpace(model.Language))
-                ModelState.AddModelError(nameof(model.Language), "נא לבחור שפה.");
+                if (string.IsNullOrWhiteSpace(model.Phone1))
+                    ModelState.AddModelError(nameof(model.Phone1), "נא להזין מספר טלפון.");
 
-            if ((level == "B" || level == "C") && (model.SelectedMedications == null || !model.SelectedMedications.Any()))
-                ModelState.AddModelError(nameof(model.SelectedMedications), "נא לבחור לפחות תרופה אחת מהרשימה.");
+                // אם את רוצה לחייב תרופות ברמה B/C השאירי את זה.
+                // אם לא – תמחקי את הבלוק הבא.
+                if (model.SelectedMedications == null || !model.SelectedMedications.Any())
+                    ModelState.AddModelError(nameof(model.SelectedMedications), "נא לבחור לפחות תרופה אחת מהרשימה.");
 
-            if ((level == "B" || level == "C") && (model.SelectedDiseases == null || !model.SelectedDiseases.Any()))
-                ModelState.AddModelError(nameof(model.SelectedDiseases), "נא לבחור לפחות מחלה אחת מהרשימה.");
+                // ❗ חשוב: לא מחייבים כאן איש קשר לחירום כי המסך הזה לא כולל שדות לזה
+                // Emergency Contact נשמר/מוזן במסך /Health/EmergencyContact
+            }
 
             if (level == "C")
             {
-                var id = (model.IdNumber ?? "").Trim();
-                if (id.Length != 9 || !id.All(char.IsDigit))
-                    ModelState.AddModelError(nameof(model.IdNumber), "נא להזין תעודת זהות תקינה (9 ספרות).");
+                if (!model.MicConsent)
+                    ModelState.AddModelError(nameof(model.MicConsent), "כדי להשתמש בשירותי רמה 3 יש לאשר הפעלת מיקרופון.");
+                if (!model.CameraConsent)
+                    ModelState.AddModelError(nameof(model.CameraConsent), "כדי להשתמש בשירותי רמה 3 יש לאשר הפעלת מצלמה.");
             }
 
             if (!ModelState.IsValid)
-            {
-                ViewBag.Level = level;
-                ViewBag.MedCatalog = GetMedicationCatalog();
-                ViewBag.DiseaseCatalog = GetDiseaseCatalog();
                 return View(model);
-            }
 
-
-
-            // ✅ שמירה ב-Session
-            HttpContext.Session.SetString("FirstName", model.FirstName!.Trim());
-            HttpContext.Session.SetString("Language", model.Language!.Trim());
-            HttpContext.Session.SetString("Age", model.Age!.Value.ToString());
-
-            if (level == "B" || level == "C")
+            // -------- Save to Session --------
+            if (level == "A")
             {
-                // תרופות
-                var meds = model.SelectedMedications ?? new List<string>();
-                HttpContext.Session.SetString(
-                    "FixedMedications",
-                    string.Join(", ", meds)
-                );
-
-                // מחלות
-                var diseases = model.SelectedDiseases ?? new List<string>();
-                HttpContext.Session.SetString(
-                    "FixedDiseases",
-                    string.Join(", ", diseases)
-                );
+                // אין פרטים לשמור
+                HttpContext.Session.SetString("MicConsent", "false");
+                HttpContext.Session.SetString("CameraConsent", "false");
             }
             else
             {
-                HttpContext.Session.Remove("FixedMedications");
-                HttpContext.Session.Remove("FixedDiseases");
+                HttpContext.Session.SetString("PersonalIdNumber", (model.PersonalIdNumber ?? "").Trim());
+                HttpContext.Session.SetString("Hmo", (model.Hmo ?? "").Trim());
+                HttpContext.Session.SetString("Phone1", (model.Phone1 ?? "").Trim());
+
+                if (!string.IsNullOrWhiteSpace(model.Phone2))
+                    HttpContext.Session.SetString("Phone2", model.Phone2.Trim());
+                else
+                    HttpContext.Session.Remove("Phone2");
+
+                HttpContext.Session.SetString("FixedMedications", string.Join(", ", model.SelectedMedications ?? new List<string>()));
+
+                if (level == "C")
+                {
+                    HttpContext.Session.SetString("MicConsent", model.MicConsent ? "true" : "false");
+                    HttpContext.Session.SetString("CameraConsent", model.CameraConsent ? "true" : "false");
+                }
+                else
+                {
+                    HttpContext.Session.SetString("MicConsent", "false");
+                    HttpContext.Session.SetString("CameraConsent", "false");
+                }
             }
-
-
-            if (level == "C")
-                HttpContext.Session.SetString("IdNumber", (model.IdNumber ?? "").Trim());
-            else
-                HttpContext.Session.Remove("IdNumber");
 
             HttpContext.Session.SetString("IsLoggedIn", "true");
-            return RedirectToAction("Services");
+            LogAction(pid.Value, "Submit:RegisterMini", $"Level={level}");
+
+            // -------- Save to DB --------
+            var participant = GetCurrentParticipant(pid.Value);
+            if (participant != null)
+            {
+                participant.CurrentPrivacyLevel = MapSharingLevelToPrivacyLevel(level);
+
+                if (level == "A")
+                {
+                    participant.PersonalIdNumber = null;
+                    participant.Hmo = null;
+                    participant.Phone1 = null;
+                    participant.Phone2 = null;
+                    participant.FixedMedications = null;
+
+                    // לא מוחקים EmergencyContact כאן, כי זה שירות שממולא בנפרד
+                    participant.MicConsent = false;
+                    participant.CameraConsent = false;
+                }
+                else
+                {
+                    participant.PersonalIdNumber = (model.PersonalIdNumber ?? "").Trim();
+                    participant.Hmo = (model.Hmo ?? "").Trim();
+                    participant.Phone1 = (model.Phone1 ?? "").Trim();
+                    participant.Phone2 = string.IsNullOrWhiteSpace(model.Phone2) ? null : model.Phone2.Trim();
+                    participant.FixedMedications = string.Join(", ", model.SelectedMedications ?? new List<string>());
+
+                    if (level == "C")
+                    {
+                        participant.MicConsent = model.MicConsent;
+                        participant.CameraConsent = model.CameraConsent;
+                    }
+                    else
+                    {
+                        participant.MicConsent = false;
+                        participant.CameraConsent = false;
+                    }
+                }
+
+                _db.SaveChanges();
+            }
+
+            // ✅ מעבר חד משמעי לשירותים
+            return RedirectToAction("Services", "Prototype");
         }
 
-        // מסך שירותים (בריאות בלבד)
+
+        // -----------------------------
+        // Services
+        // -----------------------------
         public IActionResult Services()
         {
+            SetUiFlagsToViewBag();
+
+            var pid = GetParticipantId();
+            if (pid == null)
+                return RedirectToAction("Login", "Experiment");
+
+            SyncSharingLevelFromDbToSessionIfExists(pid.Value);
+
             var level = HttpContext.Session.GetString("SharingLevel") ?? "A";
             ViewBag.Level = level;
 
-            ViewBag.FirstName = HttpContext.Session.GetString("FirstName") ?? "";
-            ViewBag.Language = HttpContext.Session.GetString("Language") ?? "";
-            ViewBag.FixedMedications = HttpContext.Session.GetString("FixedMedications") ?? "";
-            ViewBag.IdNumber = HttpContext.Session.GetString("IdNumber") ?? "";
+            // 🤖 המלצה רנדומלית לפי רמה (לא חוזרת פעמיים ברצף)
+            var lastKey = HttpContext.Session.GetString("LastRobotRecKey");
+            var rec = RobotRecommendationEngine.GetRandom(level, lastKey);
 
+            // נשמור בסשן כדי למנוע חזרה ברצף + (אופציונלי) לשימושים נוספים
+            HttpContext.Session.SetString("LastRobotRecKey", rec.ServiceKey);
+            HttpContext.Session.SetString("LastRobotRecText", rec.Text ?? "");
+            HttpContext.Session.SetString("LastRobotRecUrl", rec.TargetUrl ?? "");
+
+            // ✅ מה שמוצג בדף
+            ViewBag.RobotRecKey = rec.ServiceKey;      // 🔑 חשוב: זה מה שה-JS משתמש כדי לבחור MP3 נכון
+            ViewBag.RobotRecText = rec.Text;
+            ViewBag.RobotRecUrl = rec.TargetUrl;
+            ViewBag.RobotRecAudio = rec.AudioFile;      // למשל "rec_B_2.mp3"
+            ViewBag.RobotRecIsQuestion = rec.IsQuestion;
+
+            LogAction(pid.Value, "View:Services", $"Level={level}, RecKey={rec.ServiceKey}");
             return View();
         }
 
-        // ✅ שדרוג רמה – צעד אחד קדימה (A→B, B→C)
+
+        // Upgrade (A->B, B->C)
         [HttpPost]
         public IActionResult UpgradeLevel()
         {
+            var pid = GetParticipantId();
+            if (pid == null)
+                return RedirectToAction("Login", "Experiment");
+
             var current = HttpContext.Session.GetString("SharingLevel") ?? "A";
             var next = current == "A" ? "B" : current == "B" ? "C" : "C";
 
             HttpContext.Session.SetString("SharingLevel", next);
 
-            // אחרי שדרוג עוברים למסך ההגדרות להשלים פרטים
+            var participant = GetCurrentParticipant(pid.Value);
+            if (participant != null)
+            {
+                participant.CurrentPrivacyLevel = MapSharingLevelToPrivacyLevel(next);
+                _db.SaveChanges();
+            }
+
+            LogAction(pid.Value, "UpgradePrivacyLevel", $"From={current}, To={next}");
             return RedirectToAction("RegisterMini");
         }
 
-        // ✅ הורדת רמת שיתוף (לפי דרישה: אפשר לצמצם בכל רגע)
+        // Downgrade + clear irrelevant data
         [HttpPost]
         public IActionResult DowngradeLevel(string targetLevel)
         {
-            // מאפשרים רק A/B/C
-            var t = (targetLevel ?? "A").ToUpperInvariant();
+            var pid = GetParticipantId();
+            if (pid == null)
+                return RedirectToAction("Login", "Experiment");
+
+            var t = (targetLevel ?? "A").Trim().ToUpperInvariant();
             if (t != "A" && t != "B" && t != "C") t = "A";
 
             HttpContext.Session.SetString("SharingLevel", t);
 
-            // ניקוי מידע שלא רלוונטי לרמה נמוכה יותר
             if (t == "A")
             {
+                HttpContext.Session.Remove("PersonalIdNumber");
+                HttpContext.Session.Remove("Hmo");
+                HttpContext.Session.Remove("Phone1");
+                HttpContext.Session.Remove("Phone2");
                 HttpContext.Session.Remove("FixedMedications");
-                HttpContext.Session.Remove("FixedDiseases");
-                HttpContext.Session.Remove("IdNumber");
+                HttpContext.Session.Remove("EmergencyContactName");
+                HttpContext.Session.Remove("EmergencyContactPhone");
+                HttpContext.Session.SetString("MicConsent", "false");
+                HttpContext.Session.SetString("CameraConsent", "false");
             }
             else if (t == "B")
             {
-                HttpContext.Session.Remove("IdNumber");
+                HttpContext.Session.SetString("MicConsent", "false");
+                HttpContext.Session.SetString("CameraConsent", "false");
             }
 
+            var participant = GetCurrentParticipant(pid.Value);
+            if (participant != null)
+            {
+                participant.CurrentPrivacyLevel = MapSharingLevelToPrivacyLevel(t);
+
+                if (t == "A")
+                {
+                    participant.PersonalIdNumber = null;
+                    participant.Hmo = null;
+                    participant.Phone1 = null;
+                    participant.Phone2 = null;
+                    participant.FixedMedications = null;
+                    participant.EmergencyContactName = null;
+                    participant.EmergencyContactPhone = null;
+                    participant.MicConsent = false;
+                    participant.CameraConsent = false;
+                }
+                else if (t == "B")
+                {
+                    participant.MicConsent = false;
+                    participant.CameraConsent = false;
+                }
+
+                _db.SaveChanges();
+            }
+
+            LogAction(pid.Value, "DowngradePrivacyLevel", $"To={t}");
             return RedirectToAction("RegisterMini");
         }
 
-        // ✅ מחיקת מידע – דרישה מפורשת
         [HttpPost]
         public IActionResult DeleteMyData()
         {
-            var level = HttpContext.Session.GetString("SharingLevel") ?? "A";
+            var pid = GetParticipantId();
+            if (pid == null)
+                return RedirectToAction("Login", "Experiment");
 
-            HttpContext.Session.Remove("FirstName");
-            HttpContext.Session.Remove("Language");
+            // Session clear (רק מה שיש אצלנו)
+            HttpContext.Session.Remove("PersonalIdNumber");
+            HttpContext.Session.Remove("Hmo");
+            HttpContext.Session.Remove("Phone1");
+            HttpContext.Session.Remove("Phone2");
             HttpContext.Session.Remove("FixedMedications");
-            HttpContext.Session.Remove("IdNumber");
-            HttpContext.Session.Remove("Age");
-            HttpContext.Session.Remove("FixedDiseases");
-            HttpContext.Session.SetString("SharingLevel", level);
+            HttpContext.Session.Remove("EmergencyContactName");
+            HttpContext.Session.Remove("EmergencyContactPhone");
+            HttpContext.Session.SetString("MicConsent", "false");
+            HttpContext.Session.SetString("CameraConsent", "false");
+            HttpContext.Session.Remove("SharingLevel");
             HttpContext.Session.SetString("IsLoggedIn", "false");
 
-            return RedirectToAction("Intro");
+            // DB clear
+            var participant = GetCurrentParticipant(pid.Value);
+            if (participant != null)
+            {
+                participant.PersonalIdNumber = null;
+                participant.Hmo = null;
+                participant.Phone1 = null;
+                participant.Phone2 = null;
+                participant.FixedMedications = null;
+                participant.EmergencyContactName = null;
+                participant.EmergencyContactPhone = null;
+                participant.MicConsent = false;
+                participant.CameraConsent = false;
+                participant.CurrentPrivacyLevel = null;
+
+                _db.SaveChanges();
+            }
+
+            LogAction(pid.Value, "DeleteMyData", "All personal data cleared");
+            return RedirectToAction("Intro", "Prototype");
         }
 
         [HttpPost]
         public IActionResult Logout()
         {
-            HttpContext.Session.Clear();
-            return RedirectToAction("Intro");
+            var pid = GetParticipantId();
+
+            if (pid != null)
+            {
+                var openSession = _db.ParticipantSessions
+                    .Where(s => s.ParticipantId == pid.Value && s.EndedAtUtc == null)
+                    .OrderByDescending(s => s.StartedAtUtc)
+                    .FirstOrDefault();
+
+                if (openSession != null)
+                {
+                    openSession.EndedAtUtc = DateTime.UtcNow;
+                    _db.SaveChanges();
+                }
+
+                LogAction(pid.Value, "Logout");
+            }
+
+            // ✅ לא עושים Session.Clear() כדי לא למחוק נתוני שירותים שנשמרו בסשן (תזכורות וכו')
+            // מנקים רק נתונים שקשורים להתחברות/תצוגה
+            HttpContext.Session.SetString("IsLoggedIn", "false");
+            HttpContext.Session.Remove("FirstName");
+            HttpContext.Session.Remove("ParticipantId");
+
+
+            return RedirectToAction("Login", "Experiment");
         }
+
     }
 }

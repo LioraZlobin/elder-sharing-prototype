@@ -1,4 +1,6 @@
 ﻿@model ElderSharingPrototype.Models.MiniRegisterViewModel
+@using Microsoft.AspNetCore.Mvc.Rendering
+
 @{
     ViewData["Title"] = "הגדרות לפי רמת שיתוף";
     var level = (string)(ViewBag.Level ?? "A");
@@ -6,6 +8,8 @@
     string levelText = level == "A" ? "רמה 1 – פרטיות גבוהה" :
                        level == "B" ? "רמה 2 – שיתוף בינוני" :
                                       "רמה 3 – שיתוף גבוה";
+
+    var hmoList = ViewBag.HmoList as List<string> ?? new List<string> { "כללית", "מכבי", "מאוחדת", "לאומית" };
 }
 
 <div class="container py-4" style="max-width: 900px;">
@@ -20,107 +24,131 @@
 
     <div class="d-grid gap-2 mb-3">
         <a class="btn btn-outline-primary btn-lg" href="/Prototype/Choose" style="font-size:20px;">שינוי רמת שיתוף</a>
-
     </div>
 
-    <form method="post" class="mt-3">
-        <div class="row g-3">
-
-            <!-- רמה A: שם + שפה + גיל -->
-            <div class="col-12 col-md-6">
-                <label class="form-label" style="font-size:18px;">שם</label>
-                <input asp-for="FirstName" class="form-control form-control-lg" placeholder="לדוגמה: דינה" />
-                <span asp-validation-for="FirstName" class="text-danger"></span>
-            </div>
-
-            <div class="col-12 col-md-6">
-                <label class="form-label" style="font-size:18px;">שפה</label>
-                <select asp-for="Language" class="form-select form-select-lg">
-                    <option value="">בחר/י</option>
-                    <option value="עברית">עברית</option>
-                    <option value="רוסית">רוסית</option>
-                    <option value="אנגלית">אנגלית</option>
-                </select>
-                <span asp-validation-for="Language" class="text-danger"></span>
-            </div>
-
-            <div class="col-12 col-md-4">
-                <label class="form-label" style="font-size:18px;">גיל</label>
-                <input asp-for="Age" type="number" class="form-control form-control-lg" placeholder="לדוגמה: 72" />
-                <span asp-validation-for="Age" class="text-danger"></span>
-            </div>
-
-            @if (level == "B" || level == "C")
-{
-    <hr class="my-3" />
-
-    var meds = ViewBag.MedCatalog as List<string> ?? new List<string>();
-    var diseaseList = ViewBag.DiseaseCatalog as List<string> ?? new List<string>();
-
-    <!-- תרופות -->
-    <div class="col-12">
-        <label class="form-label" style="font-size:18px;">תרופות קבועות</label>
-
-        <select asp-for="SelectedMedications"
-                asp-items="@(new MultiSelectList(meds, Model.SelectedMedications))"
-                class="form-select form-select-lg"
-                multiple="multiple"
-                id="medSelect">
-        </select>
-
-        <span asp-validation-for="SelectedMedications" class="text-danger"></span>
-
-        <div class="form-text" style="font-size:16px;">
-            התחילי להקליד (למשל: א → אק → אקמול) כדי לצמצם את הרשימה.
-        </div>
-    </div>
-
-    <!-- מחלות -->
-    <div class="col-12 mt-3">
-        <label class="form-label" style="font-size:18px;">מחלות</label>
-
-        <select asp-for="SelectedDiseases"
-                asp-items="@(new MultiSelectList(diseaseList, Model.SelectedDiseases))"
-                class="form-select form-select-lg"
-                multiple="multiple"
-                id="diseaseSelect">
-        </select>
-
-        <span asp-validation-for="SelectedDiseases" class="text-danger"></span>
-
-        <div class="form-text" style="font-size:16px;">
-            התחילי להקליד (למשל: ס → סו → סוכר...) כדי לצמצם את הרשימה.
-        </div>
-    </div>
-
-    <div class="alert alert-info mt-3" style="font-size:18px;">
-        הנתונים נשארים במכשיר ולא נשלחים הלאה.
-    </div>
-}
-
-
-
-            @if (level == "C")
-            {
-                <hr class="my-3" />
-
-                <div class="col-12 col-md-6">
-                    <label class="form-label" style="font-size:18px;">תעודת זהות (לזיהוי מול קופת חולים – דמו)</label>
-                    <input asp-for="IdNumber" class="form-control form-control-lg" maxlength="9" placeholder="9 ספרות" />
-                    <span asp-validation-for="IdNumber" class="text-danger"></span>
-                </div>
-
-                <div class="alert alert-warning mt-2" style="font-size:18px;">
-                    תוכל לצמצם את רמת השיתוף בכל רגע.
-                </div>
-            }
-
+    @* =======================
+       רמה 1 (A) — אין פרטים למלא
+       ======================= *@
+    @if (level == "A")
+    {
+        <div class="card p-3">
+            <h2 class="h5 mb-2">ברמה זו לא נדרש למלא פרטים אישיים</h2>
+            <p class="mb-0" style="font-size:18px;">
+                התחברת באמצעות מספר סידורי בלבד. אפשר להתחיל להשתמש בשירותים.
+            </p>
         </div>
 
         <div class="d-grid mt-4">
-            <button class="btn btn-primary btn-lg" type="submit" style="font-size:20px;">המשך לשירותים</button>
+            <a class="btn btn-primary btn-lg" href="/Prototype/Services" style="font-size:20px;">המשך לשירותים</a>
         </div>
-    </form>
+    }
+    else
+    {
+        @* =======================
+           רמה 2 (B) ורמה 3 (C)
+           ======================= *@
+
+        <form asp-controller="Prototype" asp-action="RegisterMini" method="post" class="mt-3">
+            @Html.AntiForgeryToken()
+
+            <div asp-validation-summary="All" class="text-danger mb-3" style="font-size:16px;"></div>
+
+            <div class="row g-3">
+
+                <div class="col-12 col-md-6">
+                    <label class="form-label" style="font-size:18px;">מספר טלפון</label>
+                    <input asp-for="Phone1" class="form-control form-control-lg" placeholder="לדוגמה: 0521234567" />
+                    <span asp-validation-for="Phone1" class="text-danger"></span>
+                </div>
+
+                <div class="col-12 col-md-6">
+                    <label class="form-label" style="font-size:18px;">מספר טלפון נוסף (אופציונלי)</label>
+                    <input asp-for="Phone2" class="form-control form-control-lg" placeholder="אופציונלי" />
+                    <span asp-validation-for="Phone2" class="text-danger"></span>
+                </div>
+
+                <div class="col-12 col-md-6">
+                    <label class="form-label" style="font-size:18px;">ת״ז אישי</label>
+                    <input asp-for="PersonalIdNumber" class="form-control form-control-lg" maxlength="9" placeholder="9 ספרות" />
+                    <span asp-validation-for="PersonalIdNumber" class="text-danger"></span>
+                </div>
+
+                <div class="col-12 col-md-6">
+                    <label class="form-label" style="font-size:18px;">קופת חולים</label>
+                    <select asp-for="Hmo" class="form-select form-select-lg">
+                        <option value="">בחר/י</option>
+                        @foreach (var h in hmoList)
+                        {
+                            <option value="@h">@h</option>
+                        }
+                    </select>
+                    <span asp-validation-for="Hmo" class="text-danger"></span>
+                </div>
+
+                <hr class="my-3" />
+
+                @{
+                    var meds = ViewBag.MedCatalog as List<string> ?? new List<string>();
+                }
+
+                <div class="col-12">
+                    <label class="form-label" style="font-size:18px;">רשימת תרופות</label>
+
+                    <select asp-for="SelectedMedications"
+                            asp-items="@(new MultiSelectList(meds, Model.SelectedMedications))"
+                            class="form-select form-select-lg"
+                            multiple="multiple"
+                            id="medSelect">
+                    </select>
+
+                    <span asp-validation-for="SelectedMedications" class="text-danger"></span>
+
+                    <div class="form-text" style="font-size:16px;">
+                        התחילי להקליד כדי לצמצם את הרשימה.
+                    </div>
+                </div>
+
+                <div class="alert alert-info mt-3" style="font-size:18px;">
+                    הנתונים נשמרים רק במערכת לצורך תפעול השירותים ברמת השיתוף שבחרת.
+                </div>
+
+                @if (level == "C")
+                {
+                    <hr class="my-3" />
+                    <div class="col-12">
+                        <h2 class="h5 mb-2">אישור גישה למצלמה ומיקרופון</h2>
+                        <p class="text-muted" style="font-size:16px;">
+                            כדי לאפשר תור וידיאו ויצירת קשר חזותי במקרה חירום.
+                        </p>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <div class="form-check" style="font-size:18px;">
+                            <input class="form-check-input" type="checkbox" asp-for="MicConsent" id="micConsent" />
+                            <label class="form-check-label" for="micConsent">אני מאשר/ת הפעלת מיקרופון</label>
+                        </div>
+                        <span asp-validation-for="MicConsent" class="text-danger"></span>
+                    </div>
+
+                    <div class="col-12 col-md-6">
+                        <div class="form-check" style="font-size:18px;">
+                            <input class="form-check-input" type="checkbox" asp-for="CameraConsent" id="cameraConsent" />
+                            <label class="form-check-label" for="cameraConsent">אני מאשר/ת הפעלת מצלמה</label>
+                        </div>
+                        <span asp-validation-for="CameraConsent" class="text-danger"></span>
+                    </div>
+
+                    <div class="alert alert-warning mt-2" style="font-size:18px;">
+                        תוכל/י להוריד רמת שיתוף בכל רגע.
+                    </div>
+                }
+            </div>
+
+            <div class="d-grid mt-4">
+                <button class="btn btn-primary btn-lg" type="submit" style="font-size:20px;">המשך לשירותים</button>
+            </div>
+        </form>
+    }
 </div>
 
 @section Scripts {
@@ -132,23 +160,11 @@
 
     <script>
         $(document).ready(function () {
-
-            // תרופות
             $('#medSelect').select2({
                 placeholder: "בחר/י תרופות מהרשימה",
                 width: '100%',
                 dir: "rtl"
             });
-
-            // מחלות
-            $('#diseaseSelect').select2({
-                placeholder: "בחר/י מחלות מהרשימה",
-                width: '100%',
-                dir: "rtl"
-            });
-
         });
     </script>
 }
-
-
