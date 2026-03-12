@@ -32,9 +32,8 @@ namespace ElderSharingPrototype.Controllers
             return RedirectToAction("Services", "Prototype");
         }
 
-
         // ------------------------------------------------------------
-        // Helpers - Medications (נשאר כמו שהיה אצלך: FixedMedications ב-Participant)
+        // Helpers - Medications
         // ------------------------------------------------------------
         private Participant? GetCurrentParticipant()
         {
@@ -89,7 +88,7 @@ namespace ElderSharingPrototype.Controllers
         }
 
         // ------------------------------------------------------------
-        // רמה 1 (A) – שירותים כלליים (פתוח לכולם)
+        // רמה 1 (A) – שירותים כלליים
         // ------------------------------------------------------------
         [HttpGet]
         public IActionResult CheckupRecommendations()
@@ -104,53 +103,77 @@ namespace ElderSharingPrototype.Controllers
         }
 
         // ------------------------------------------------------------
-        // ניהול רשימת תרופות קבועות (B/C) - נשמר ב-Participant.FixedMedications
+        // ניהול תרופות + תזכורות תרופות (A/B/C)
         // ------------------------------------------------------------
         [HttpGet]
         public IActionResult MedicationList()
         {
-            if (Level != "B" && Level != "C")
-                return Blocked("ניהול רשימת תרופות קבועות", "B");
-
-            var pid = GetParticipantId();
-            if (!pid.HasValue) return RedirectToAction("Login", "Experiment");
-
-            ViewBag.Level = Level;
-            ViewBag.MedCatalog = GetMedicationCatalog();
-
-            var meds = GetUserMedicationList();
-            return View(meds);
+            return RedirectToAction(nameof(MedicationReminders), new { mode = "detailed" });
         }
 
-        [HttpPost]
-        public IActionResult RemoveMedicationFromList(string name)
+        [HttpGet]
+        public IActionResult MedicationReminders(string? mode)
         {
-            if (Level != "B" && Level != "C")
-                return Blocked("ניהול רשימת תרופות קבועות", "B");
-
             var pid = GetParticipantId();
             if (!pid.HasValue) return RedirectToAction("Login", "Experiment");
 
-            var meds = GetUserMedicationList();
-            var toRemove = (name ?? "").Trim();
+            var level = Level;
+            var normalizedMode = (mode ?? "").Trim().ToLowerInvariant();
 
-            meds = meds.Where(m => !string.Equals(m, toRemove, StringComparison.OrdinalIgnoreCase)).ToList();
+            bool basicMode = normalizedMode == "basic";
+            bool detailedMode = normalizedMode == "detailed";
 
-            var participant = GetCurrentParticipant();
-            if (participant != null)
+            if (!basicMode && !detailedMode)
             {
-                participant.FixedMedications = string.Join(", ", meds);
-                _db.SaveChanges();
+                if (level == "A")
+                    basicMode = true;
+                else
+                    detailedMode = true;
             }
 
-            return RedirectToAction(nameof(MedicationList));
+            if (level == "A")
+            {
+                basicMode = true;
+                detailedMode = false;
+            }
+
+            var reminderModeToShow = basicMode ? "basic" : "detailed";
+
+            var reminders = _db.ReminderItems
+                .Where(x =>
+                    x.ParticipantId == pid.Value &&
+                    x.Type == "Medication" &&
+                    x.MedicationMode == reminderModeToShow)
+                .OrderByDescending(x => x.CreatedAtUtc)
+                .ToList();
+
+            var vm = new MedicationCenterViewModel
+            {
+                Level = level,
+                MedicationList = GetUserMedicationList(),
+                MedicationCatalog = GetMedicationCatalog(),
+                Reminders = reminders.Select(x => new ReminderItem
+                {
+                    Id = x.Id,
+                    Type = x.Type,
+                    Title = x.Title,
+                    Time = x.Time,
+                    Notes = x.Notes ?? "",
+                    MedicationName = x.MedicationName
+                }).ToList()
+            };
+
+            if (basicMode)
+                return View("MedicationRemindersLevel1", vm);
+
+            return View("MedicationReminders", vm);
         }
 
         [HttpPost]
         public IActionResult AddMedicationToList(string name)
         {
             if (Level != "B" && Level != "C")
-                return Blocked("ניהול רשימת תרופות קבועות", "B");
+                return Blocked("ניהול תרופות ותזכורות", "B");
 
             var pid = GetParticipantId();
             if (!pid.HasValue) return RedirectToAction("Login", "Experiment");
@@ -161,7 +184,7 @@ namespace ElderSharingPrototype.Controllers
             if (string.IsNullOrWhiteSpace(newName))
             {
                 TempData["MedListError"] = "נא לבחור תרופה מהרשימה להוספה.";
-                return RedirectToAction(nameof(MedicationList));
+                return RedirectToAction(nameof(MedicationReminders), new { mode = "detailed" });
             }
 
             var catalog = GetMedicationCatalog();
@@ -169,13 +192,13 @@ namespace ElderSharingPrototype.Controllers
             if (!inCatalog)
             {
                 TempData["MedListError"] = "התרופה שנבחרה אינה קיימת בקטלוג. נא לבחור מהרשימה.";
-                return RedirectToAction(nameof(MedicationList));
+                return RedirectToAction(nameof(MedicationReminders), new { mode = "detailed" });
             }
 
             if (meds.Any(m => string.Equals(m, newName, StringComparison.OrdinalIgnoreCase)))
             {
                 TempData["MedListError"] = "התרופה כבר קיימת ברשימה שלך.";
-                return RedirectToAction(nameof(MedicationList));
+                return RedirectToAction(nameof(MedicationReminders), new { mode = "detailed" });
             }
 
             meds.Add(newName);
@@ -188,92 +211,94 @@ namespace ElderSharingPrototype.Controllers
                 _db.SaveChanges();
             }
 
-            return RedirectToAction(nameof(MedicationList));
-        }
-
-        // ------------------------------------------------------------
-        // תזכורות תרופות (A/B/C) - שמירה ל-DB
-        // A: כללית, B/C: לפי שם תרופה מהרשימה
-        // ------------------------------------------------------------
-        [HttpGet]
-        public IActionResult MedicationReminders()
-        {
-            var pid = GetParticipantId();
-            if (!pid.HasValue) return RedirectToAction("Login", "Experiment");
-
-            ViewBag.Level = Level;
-            ViewBag.UserMeds = GetUserMedicationList();
-
-            var list = _db.ReminderItems
-                .Where(x => x.ParticipantId == pid.Value && x.Type == "Medication")
-                .OrderByDescending(x => x.CreatedAtUtc)
-                .ToList();
-
-            // משתמשים ב-ReminderItem הקיים שלך ל-View (אם ה-View שלך מצפה לזה)
-            var vm = list.Select(x => new ReminderItem
-            {
-                Id = x.Id,
-                Type = x.Type,
-                Title = x.Title,
-                Time = x.Time,
-                Notes = x.Notes ?? "",
-                MedicationName = x.MedicationName
-            }).ToList();
-
-            return View(vm);
+            return RedirectToAction(nameof(MedicationReminders), new { mode = "detailed" });
         }
 
         [HttpPost]
-        public IActionResult AddMedicationReminder(string? medicationName, string time, string? notes)
+        public IActionResult RemoveMedicationFromList(string name)
+        {
+            if (Level != "B" && Level != "C")
+                return Blocked("ניהול תרופות ותזכורות", "B");
+
+            var pid = GetParticipantId();
+            if (!pid.HasValue) return RedirectToAction("Login", "Experiment");
+
+            var meds = GetUserMedicationList();
+            var toRemove = (name ?? "").Trim();
+
+            meds = meds
+                .Where(m => !string.Equals(m, toRemove, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+
+            var participant = GetCurrentParticipant();
+            if (participant != null)
+            {
+                participant.FixedMedications = string.Join(", ", meds);
+                _db.SaveChanges();
+            }
+
+            return RedirectToAction(nameof(MedicationReminders), new { mode = "detailed" });
+        }
+
+        [HttpPost]
+        public IActionResult AddMedicationReminder(string? medicationName, string time, string? notes, string? mode)
         {
             var pid = GetParticipantId();
             if (!pid.HasValue) return RedirectToAction("Login", "Experiment");
 
             var level = Level;
-            ViewBag.Level = level;
+            var normalizedMode = (mode ?? "").Trim().ToLowerInvariant();
+
+            bool isDetailedMode = normalizedMode == "detailed" && (level == "B" || level == "C");
+            bool isBasicMode = !isDetailedMode;
 
             var userMeds = GetUserMedicationList();
-            ViewBag.UserMeds = userMeds;
 
             if (string.IsNullOrWhiteSpace(time))
-                ModelState.AddModelError("time", "נא לבחור שעה.");
+            {
+                TempData["ReminderError"] = "נא לבחור שעה.";
+                return RedirectToAction(nameof(MedicationReminders), new { mode = isDetailedMode ? "detailed" : "basic" });
+            }
 
-            if (level == "B" || level == "C")
+            if (isDetailedMode)
             {
                 if (userMeds == null || userMeds.Count == 0)
                 {
-                    ModelState.AddModelError("medicationName", "אין תרופות שמורות ברשימה שלך. חזרי למסך 'ניהול רשימת תרופות קבועות' והוסיפי תרופות.");
+                    TempData["ReminderError"] = "אין תרופות שמורות ברשימה שלך. הוסיפי קודם תרופה לרשימה.";
+                    return RedirectToAction(nameof(MedicationReminders), new { mode = "detailed" });
                 }
-                else
+
+                if (string.IsNullOrWhiteSpace(medicationName))
                 {
-                    if (string.IsNullOrWhiteSpace(medicationName))
-                        ModelState.AddModelError("medicationName", "נא לבחור תרופה מהרשימה שלך.");
-                    else
-                    {
-                        var chosen = medicationName.Trim();
-                        var exists = userMeds.Any(m => string.Equals(m, chosen, StringComparison.OrdinalIgnoreCase));
-                        if (!exists)
-                            ModelState.AddModelError("medicationName", "התרופה שנבחרה אינה נמצאת ברשימה שלך. נא לבחור תרופה מהרשימה.");
-                    }
+                    TempData["ReminderError"] = "נא לבחור תרופה מהרשימה שלך.";
+                    return RedirectToAction(nameof(MedicationReminders), new { mode = "detailed" });
+                }
+
+                var chosenMedication = medicationName.Trim();
+                var exists = userMeds.Any(m => string.Equals(m, chosenMedication, StringComparison.OrdinalIgnoreCase));
+                if (!exists)
+                {
+                    TempData["ReminderError"] = "התרופה שנבחרה אינה נמצאת ברשימה שלך. נא לבחור תרופה מהרשימה.";
+                    return RedirectToAction(nameof(MedicationReminders), new { mode = "detailed" });
                 }
             }
 
-            if (!ModelState.IsValid)
-                return RedirectToAction(nameof(MedicationReminders));
-
             string title;
             string? medNameToSave;
+            string medicationModeToSave;
 
-            if (level == "B" || level == "C")
+            if (isDetailedMode)
             {
                 var chosen = medicationName!.Trim();
                 title = $"תזכורת לנטילת: {chosen}";
                 medNameToSave = chosen;
+                medicationModeToSave = "detailed";
             }
             else
             {
                 title = "תזכורת כללית ללקיחת תרופות";
                 medNameToSave = null;
+                medicationModeToSave = "basic";
             }
 
             _db.ReminderItems.Add(new ReminderItemEntity
@@ -283,15 +308,17 @@ namespace ElderSharingPrototype.Controllers
                 Title = title,
                 Time = time.Trim(),
                 Notes = (notes ?? "").Trim(),
-                MedicationName = medNameToSave
+                MedicationName = medNameToSave,
+                MedicationMode = medicationModeToSave
             });
+
             _db.SaveChanges();
 
-            return RedirectToAction(nameof(MedicationReminders));
+            return RedirectToAction(nameof(MedicationReminders), new { mode = isDetailedMode ? "detailed" : "basic" });
         }
 
         [HttpPost]
-        public IActionResult DeleteMedicationReminder(Guid id)
+        public IActionResult DeleteMedicationReminder(Guid id, string? mode)
         {
             var pid = GetParticipantId();
             if (!pid.HasValue) return RedirectToAction("Login", "Experiment");
@@ -303,7 +330,95 @@ namespace ElderSharingPrototype.Controllers
                 _db.SaveChanges();
             }
 
-            return RedirectToAction(nameof(MedicationReminders));
+            var normalizedMode = (mode ?? "").Trim().ToLowerInvariant();
+            return RedirectToAction(nameof(MedicationReminders), new { mode = normalizedMode == "detailed" ? "detailed" : "basic" });
+        }
+
+        [HttpGet]
+        public IActionResult PharmacyContact(string? city)
+        {
+            if (Level != "C")
+                return Blocked("עדכון מלאי וקשר עם בית המרקחת", "C");
+
+            var allBranches = new List<PharmacyBranchViewModel>
+    {
+        new PharmacyBranchViewModel
+        {
+            City = "באר שבע",
+            BranchName = "סופר-פארם גרנד קניון",
+            PhoneNumber = "08-6234567",
+            Address = "דרך חברון 21, באר שבע"
+        },
+        new PharmacyBranchViewModel
+        {
+            City = "באר שבע",
+            BranchName = "בית מרקחת כללית מרכז הנגב",
+            PhoneNumber = "08-6345678",
+            Address = "ויצמן 15, באר שבע"
+        },
+        new PharmacyBranchViewModel
+        {
+            City = "אשקלון",
+            BranchName = "סופר-פארם אשקלון מול הים",
+            PhoneNumber = "08-6745678",
+            Address = "בן גוריון 10, אשקלון"
+        },
+        new PharmacyBranchViewModel
+        {
+            City = "אשקלון",
+            BranchName = "בית מרקחת מכבי אשקלון",
+            PhoneNumber = "08-6856789",
+            Address = "ההסתדרות 5, אשקלון"
+        },
+        new PharmacyBranchViewModel
+        {
+            City = "תל אביב",
+            BranchName = "סופר-פארם דיזנגוף סנטר",
+            PhoneNumber = "03-6123456",
+            Address = "דיזנגוף 50, תל אביב"
+        },
+        new PharmacyBranchViewModel
+        {
+            City = "תל אביב",
+            BranchName = "בית מרקחת כללית אבן גבירול",
+            PhoneNumber = "03-6234567",
+            Address = "אבן גבירול 110, תל אביב"
+        },
+        new PharmacyBranchViewModel
+        {
+            City = "קריית גת",
+            BranchName = "סופר-פארם קניון לב העיר",
+            PhoneNumber = "08-6543210",
+            Address = "מלכי ישראל 178, קריית גת"
+        },
+        new PharmacyBranchViewModel
+        {
+            City = "קריית גת",
+            BranchName = "בית מרקחת מאוחדת קריית גת",
+            PhoneNumber = "08-6654321",
+            Address = "שדרות לכיש 7, קריית גת"
+        }
+    };
+
+            var cities = new List<string>
+    {
+        "באר שבע",
+        "אשקלון",
+        "תל אביב",
+        "קריית גת"
+    };
+
+            var selectedCity = (city ?? "").Trim();
+
+            var filteredBranches = string.IsNullOrWhiteSpace(selectedCity)
+                ? new List<PharmacyBranchViewModel>()
+                : allBranches.Where(b => b.City == selectedCity).ToList();
+
+            ViewBag.Cities = cities;
+            ViewBag.SelectedCity = selectedCity;
+            ViewBag.Branches = filteredBranches;
+
+            return View();
         }
 
         // ------------------------------------------------------------
@@ -381,7 +496,7 @@ namespace ElderSharingPrototype.Controllers
         // C: נשמר ב-DB ומופיע בהיסטוריה
         // ------------------------------------------------------------
         [HttpGet]
-        public IActionResult Measurements()
+        public IActionResult Measurements(string? mode)
         {
             if (Level != "B" && Level != "C")
                 return Blocked("הזנת מדידות", "B");
@@ -389,13 +504,37 @@ namespace ElderSharingPrototype.Controllers
             var pid = GetParticipantId();
             if (!pid.HasValue) return RedirectToAction("Login", "Experiment");
 
-            ViewBag.Level = Level;
+            var normalizedMode = (mode ?? "").Trim().ToLowerInvariant();
 
-            // ברמה B אין היסטוריה בכלל (הצגה חד פעמית בלבד דרך JS)
+            bool oneTimeMode = normalizedMode == "onetime";
+            bool historyMode = normalizedMode == "history";
+
+            // ברירת מחדל:
+            // משתמש רמה B -> חד פעמי
+            // משתמש רמה C -> היסטוריה
+            if (!oneTimeMode && !historyMode)
+            {
+                if (Level == "B")
+                    oneTimeMode = true;
+                else
+                    historyMode = true;
+            }
+
+            // משתמש רמה B לא יכול להיכנס למסך היסטוריה
             if (Level == "B")
+            {
+                oneTimeMode = true;
+                historyMode = false;
+            }
+
+            ViewBag.Level = Level;
+            ViewBag.MeasurementsMode = oneTimeMode ? "onetime" : "history";
+
+            // מסך חד־פעמי: אין היסטוריה בכלל
+            if (oneTimeMode)
                 return View(new List<VitalMeasurementEntity>());
 
-            // רמה C: להביא היסטוריה מה-DB
+            // מסך היסטוריה: רק לרמה C
             var data = _db.VitalMeasurements
                 .AsNoTracking()
                 .Where(x => x.ParticipantId == pid.Value)
@@ -405,11 +544,8 @@ namespace ElderSharingPrototype.Controllers
             return View(data);
         }
 
-
-
-        // ✅ רק WiFi דמו (אין ידני)
         [HttpPost]
-        public IActionResult PullDeviceMeasurements(string? scenario)
+        public IActionResult PullDeviceMeasurements(string? scenario, string? mode)
         {
             if (Level != "B" && Level != "C")
                 return Json(new { ok = false, message = "Service available only for Level B/C" });
@@ -417,6 +553,26 @@ namespace ElderSharingPrototype.Controllers
             var pid = GetParticipantId();
             if (!pid.HasValue)
                 return Json(new { ok = false, message = "Not logged in" });
+
+            var normalizedMode = (mode ?? "").Trim().ToLowerInvariant();
+
+            bool oneTimeMode = normalizedMode == "onetime";
+            bool historyMode = normalizedMode == "history";
+
+            if (!oneTimeMode && !historyMode)
+            {
+                if (Level == "B")
+                    oneTimeMode = true;
+                else
+                    historyMode = true;
+            }
+
+            // משתמש ברמה B לא יכול לשמור היסטוריה
+            if (Level == "B")
+            {
+                oneTimeMode = true;
+                historyMode = false;
+            }
 
             var sc = (scenario ?? "normal").Trim().ToLowerInvariant();
 
@@ -438,8 +594,7 @@ namespace ElderSharingPrototype.Controllers
             var nowLocal = DateTime.Now;
             var nowUtc = DateTime.UtcNow;
 
-            // Level B: חד פעמי בלבד - לא שומרים DB
-            if (Level == "B")
+            if (oneTimeMode)
             {
                 return Json(new
                 {
@@ -451,7 +606,6 @@ namespace ElderSharingPrototype.Controllers
                 });
             }
 
-            // Level C: שמירה ל-DB
             _db.VitalMeasurements.Add(new VitalMeasurementEntity
             {
                 ParticipantId = pid.Value,
@@ -483,6 +637,29 @@ namespace ElderSharingPrototype.Controllers
             });
         }
 
+        [HttpPost]
+        public IActionResult DeleteMeasurementsHistory()
+        {
+            if (Level != "C")
+                return Blocked("מחיקת היסטוריית מדדים", "C");
+
+            var pid = GetParticipantId();
+            if (!pid.HasValue)
+                return RedirectToAction("Login", "Experiment");
+
+            var items = _db.VitalMeasurements
+                .Where(x => x.ParticipantId == pid.Value)
+                .ToList();
+
+            if (items.Any())
+            {
+                _db.VitalMeasurements.RemoveRange(items);
+                _db.SaveChanges();
+            }
+
+            TempData["MeasurementsDeletedOk"] = "היסטוריית המדדים נמחקה בהצלחה.";
+            return RedirectToAction(nameof(Measurements), new { mode = "history" });
+        }
 
         // ------------------------------------------------------------
         // זימון תור – רמה B וגם C (DB)
@@ -575,29 +752,32 @@ namespace ElderSharingPrototype.Controllers
         public IActionResult EmergencyContact()
         {
             if (Level != "B" && Level != "C")
-                return Blocked("פרטי איש קשר לחירום", "B");
+                return Blocked("פרטי איש קשר ויצירת קשר טקסטואלי במקרה חירום", "B");
 
             var pid = GetParticipantId();
             if (!pid.HasValue) return RedirectToAction("Login", "Experiment");
 
-            var row = _db.EmergencyContacts.FirstOrDefault(x => x.ParticipantId == pid.Value);
+            var contact = _db.EmergencyContacts.FirstOrDefault(x => x.ParticipantId == pid.Value);
+            var draft = _db.EmergencyTextDrafts.FirstOrDefault(x => x.ParticipantId == pid.Value);
 
-            var vm = new EmergencyContactViewModel
+            var vm = new EmergencyContactTextViewModel
             {
-                FullName = row?.FullName ?? "",
-                PhoneNumber = row?.PhoneNumber ?? "",
-                Relationship = row?.Relationship ?? "",
-                Message = row?.DefaultMessage ?? ""
+                FullName = contact?.FullName ?? "",
+                PhoneNumber = contact?.PhoneNumber ?? "",
+                Relationship = contact?.Relationship ?? "",
+                DefaultMessage = contact?.DefaultMessage ?? "",
+                Address = draft?.Address ?? "",
+                MessageText = draft?.MessageText ?? ""
             };
 
             return View(vm);
         }
 
         [HttpPost]
-        public IActionResult EmergencyContact(EmergencyContactViewModel model)
+        public IActionResult EmergencyContact(EmergencyContactTextViewModel model)
         {
             if (Level != "B" && Level != "C")
-                return Blocked("פרטי איש קשר לחירום", "B");
+                return Blocked("פרטי איש קשר ויצירת קשר טקסטואלי במקרה חירום", "B");
 
             var pid = GetParticipantId();
             if (!pid.HasValue) return RedirectToAction("Login", "Experiment");
@@ -605,26 +785,38 @@ namespace ElderSharingPrototype.Controllers
             if (!ModelState.IsValid)
                 return View(model);
 
-            var row = _db.EmergencyContacts.FirstOrDefault(x => x.ParticipantId == pid.Value);
-
-            if (row == null)
+            var contact = _db.EmergencyContacts.FirstOrDefault(x => x.ParticipantId == pid.Value);
+            if (contact == null)
             {
-                row = new EmergencyContactEntity
+                contact = new EmergencyContactEntity
                 {
                     ParticipantId = pid.Value
                 };
-                _db.EmergencyContacts.Add(row);
+                _db.EmergencyContacts.Add(contact);
             }
 
-            row.FullName = (model.FullName ?? "").Trim();
-            row.PhoneNumber = (model.PhoneNumber ?? "").Trim();
-            row.Relationship = (model.Relationship ?? "").Trim();
-            row.DefaultMessage = (model.Message ?? "").Trim();
-            row.UpdatedAtUtc = DateTime.UtcNow;
+            contact.FullName = (model.FullName ?? "").Trim();
+            contact.PhoneNumber = (model.PhoneNumber ?? "").Trim();
+            contact.Relationship = (model.Relationship ?? "").Trim();
+            contact.UpdatedAtUtc = DateTime.UtcNow;
+
+            var draft = _db.EmergencyTextDrafts.FirstOrDefault(x => x.ParticipantId == pid.Value);
+            if (draft == null)
+            {
+                draft = new EmergencyTextDraftEntity
+                {
+                    ParticipantId = pid.Value
+                };
+                _db.EmergencyTextDrafts.Add(draft);
+            }
+
+            draft.Address = (model.Address ?? "").Trim();
+            draft.MessageText = (model.MessageText ?? "").Trim();
+            draft.UpdatedAtUtc = DateTime.UtcNow;
 
             _db.SaveChanges();
 
-            TempData["SavedOk"] = "נשמר בהצלחה.";
+            TempData["SavedOk"] = "הפרטים נשמרו בהצלחה.";
             return RedirectToAction(nameof(EmergencyContact));
         }
 
@@ -634,37 +826,58 @@ namespace ElderSharingPrototype.Controllers
         [HttpGet]
         public IActionResult EmergencyText()
         {
-            if (Level != "B" && Level != "C")
-                return Blocked("יצירת קשר טקסטואלי במקרה חירום", "B");
-
-            var pid = GetParticipantId();
-            if (!pid.HasValue) return RedirectToAction("Login", "Experiment");
-
-            var contact = _db.EmergencyContacts.FirstOrDefault(x => x.ParticipantId == pid.Value);
-            var draft = _db.EmergencyTextDrafts.FirstOrDefault(x => x.ParticipantId == pid.Value);
-
-            var vm = new EmergencyTextViewModel
-            {
-                FullName = contact?.FullName ?? "",
-                PhoneNumber = contact?.PhoneNumber ?? "",
-                Address = draft?.Address ?? "",
-                MessageText = draft?.MessageText ?? ""
-            };
-
-            return View(vm);
+            return RedirectToAction(nameof(EmergencyContact));
         }
 
         [HttpPost]
         public IActionResult EmergencyText(EmergencyTextViewModel model)
         {
+            return RedirectToAction(nameof(EmergencyContact));
+        }
+
+        public class TeleVisitScheduleDto
+        {
+            public string? VisitType { get; set; }
+            public string? PreferredDate { get; set; }
+            public string? PreferredTime { get; set; }
+            public string? Reason { get; set; }
+        }
+
+        [HttpPost]
+        public IActionResult SendEmergencyText(EmergencyContactTextViewModel model)
+        {
             if (Level != "B" && Level != "C")
-                return Blocked("יצירת קשר טקסטואלי במקרה חירום", "B");
+                return Blocked("פרטי איש קשר ויצירת קשר טקסטואלי במקרה חירום", "B");
 
             var pid = GetParticipantId();
             if (!pid.HasValue) return RedirectToAction("Login", "Experiment");
 
+            if (string.IsNullOrWhiteSpace(model.FullName))
+                ModelState.AddModelError(nameof(model.FullName), "נא להזין שם איש קשר.");
+
+            if (string.IsNullOrWhiteSpace(model.PhoneNumber))
+                ModelState.AddModelError(nameof(model.PhoneNumber), "נא להזין מספר טלפון.");
+
+            if (string.IsNullOrWhiteSpace(model.MessageText))
+                ModelState.AddModelError(nameof(model.MessageText), "נא לבחור הודעת חירום.");
+
             if (!ModelState.IsValid)
-                return View(model);
+                return View("EmergencyContact", model);
+
+            var contact = _db.EmergencyContacts.FirstOrDefault(x => x.ParticipantId == pid.Value);
+            if (contact == null)
+            {
+                contact = new EmergencyContactEntity
+                {
+                    ParticipantId = pid.Value
+                };
+                _db.EmergencyContacts.Add(contact);
+            }
+
+            contact.FullName = (model.FullName ?? "").Trim();
+            contact.PhoneNumber = (model.PhoneNumber ?? "").Trim();
+            contact.Relationship = (model.Relationship ?? "").Trim();
+            contact.UpdatedAtUtc = DateTime.UtcNow;
 
             var draft = _db.EmergencyTextDrafts.FirstOrDefault(x => x.ParticipantId == pid.Value);
             if (draft == null)
@@ -684,15 +897,7 @@ namespace ElderSharingPrototype.Controllers
             _db.SaveChanges();
 
             TempData["MsgOk"] = "ההודעה נשלחה (דמו).";
-            return RedirectToAction(nameof(EmergencyText));
-        }
-
-        public class TeleVisitScheduleDto
-        {
-            public string? VisitType { get; set; }      // "video" / "phone"
-            public string? PreferredDate { get; set; }  // yyyy-MM-dd
-            public string? PreferredTime { get; set; }  // HH:mm
-            public string? Reason { get; set; }
+            return RedirectToAction(nameof(EmergencyContact));
         }
 
         [HttpPost]
@@ -716,9 +921,6 @@ namespace ElderSharingPrototype.Controllers
             if (string.IsNullOrWhiteSpace(date) || string.IsNullOrWhiteSpace(time))
                 return Json(new { ok = false, message = "Date/time is required" });
 
-            // נשמור כ"תור טלפוני/וידיאו" דרך AppointmentRequestEntity
-            // TreatmentArea -> "רופא" (דמו)
-            // Notes -> נשמור visitType כדי שה-View ידע אם זה וידיאו או טלפוני
             var entity = new AppointmentRequestEntity
             {
                 ParticipantId = pid.Value,
@@ -726,7 +928,7 @@ namespace ElderSharingPrototype.Controllers
                 Reason = reason,
                 PreferredDate = date,
                 PreferredTime = time,
-                Notes = visitType, // חשוב! ה-view בודק את זה
+                Notes = visitType,
                 CreatedAtUtc = DateTime.UtcNow
             };
 
@@ -735,7 +937,6 @@ namespace ElderSharingPrototype.Controllers
 
             return Json(new { ok = true, id = entity.Id });
         }
-
 
         [HttpPost]
         public IActionResult CancelTeleVisit(Guid id)
@@ -756,7 +957,6 @@ namespace ElderSharingPrototype.Controllers
             return RedirectToAction(nameof(TeleVisit));
         }
 
-
         // ------------------------------------------------------------
         // C – תור טלפוני / וידיאו (DB)
         // ------------------------------------------------------------
@@ -769,33 +969,25 @@ namespace ElderSharingPrototype.Controllers
             var pid = GetParticipantId();
             if (!pid.HasValue) return RedirectToAction("Login", "Experiment");
 
-            // תורים עתידיים בלבד (כמו שרצית)
-            // שימי לב: PreferredDate/PreferredTime הם string, אז נשתמש בסינון פשוט לפי תאריך במחרוזת
-            // (אם את שומרת yyyy-MM-dd זה עובד טוב)
-            var today = DateTime.Now.Date;
-
             var list = _db.AppointmentRequests
                 .Where(x => x.ParticipantId == pid.Value)
                 .AsNoTracking()
                 .ToList();
 
-            // מסננים "עתידיים" בצורה בטוחה יחסית לפי parsing
             var upcoming = new List<AppointmentRequestEntity>();
             foreach (var a in list)
             {
-                // מצפים לפורמט yyyy-MM-dd ו-HH:mm
                 DateTime dt;
                 var dateStr = (a.PreferredDate ?? "").Trim();
                 var timeStr = (a.PreferredTime ?? "").Trim();
 
                 if (DateTime.TryParse($"{dateStr} {timeStr}", out dt))
                 {
-                    if (dt >= DateTime.Now.AddMinutes(-5)) // נותן טולרנס קטן
+                    if (dt >= DateTime.Now.AddMinutes(-5))
                         upcoming.Add(a);
                 }
                 else
                 {
-                    // אם לא הצלחנו לפרסר – עדיין נציג כדי שלא "ייעלם"
                     upcoming.Add(a);
                 }
             }
@@ -807,7 +999,6 @@ namespace ElderSharingPrototype.Controllers
 
             return View();
         }
-
 
         // ------------------------------------------------------------
         // C – קשר חזותי בחירום (DB)
@@ -874,12 +1065,9 @@ namespace ElderSharingPrototype.Controllers
             if (!pid.HasValue)
                 return Json(new { ok = false, message = "Not logged in" });
 
-            // שעה מקומית (ישראל)
             var nowLocal = DateTime.Now;
             var hhmm = nowLocal.ToString("HH:mm");
 
-            // כדי למנוע "קפיצה" כפולה באותה דקה - נשמור ב-Session מתי כבר שלחנו
-            // key לדוגמה: 2026-01-25 15:00
             var minuteKey = nowLocal.ToString("yyyy-MM-dd HH:mm");
             var lastKey = HttpContext.Session.GetString("LastReminderMinuteKey");
 
@@ -888,8 +1076,6 @@ namespace ElderSharingPrototype.Controllers
                 return Json(new { ok = true, now = hhmm, due = Array.Empty<object>() });
             }
 
-            // מביאים תזכורות שמוגדרות לשעה הזו
-            // Time אצלך נשמר "HH:mm" - בדיוק כמו hhmm
             var due = _db.Set<ReminderItemEntity>()
                 .AsNoTracking()
                 .Where(r => r.ParticipantId == pid.Value && r.Time == hhmm)
@@ -905,7 +1091,6 @@ namespace ElderSharingPrototype.Controllers
                 })
                 .ToList();
 
-            // אם יש תזכורות - נעדכן session כדי לא להקפיץ שוב באותה דקה
             if (due.Any())
             {
                 HttpContext.Session.SetString("LastReminderMinuteKey", minuteKey);

@@ -1,0 +1,96 @@
+﻿@using ElderSharingPrototype.Models.Health
+@{
+    ViewData["Title"] = "עדכון מלאי וקשר עם בית המרקחת";
+
+    var cities = ViewBag.Cities as List<string> ?? new List<string>();
+    var selectedCity = ViewBag.SelectedCity as string ?? "";
+    var branches = ViewBag.Branches as List<PharmacyBranchViewModel> ?? new List<PharmacyBranchViewModel>();
+}
+
+<div class="container py-4" style="max-width: 950px;">
+    <h1 class="mb-3">עדכון מלאי וקשר עם בית המרקחת</h1>
+
+    <div class="alert alert-info" style="font-size:18px;">
+        ברמה 3 ניתן לבחור עיר, לצפות בסניפי בית המרקחת הקיימים בה, וליצור קשר טלפוני עם הסניף לצורך בדיקת מלאי תרופות.
+    </div>
+
+    <div class="card p-3 mb-4 shadow-sm">
+        <h2 class="h4 mb-3">בחירת עיר</h2>
+
+        <form method="get" action="/Health/PharmacyContact" class="row g-3">
+            <div class="col-12 col-md-8">
+                <label class="form-label" style="font-size:18px;">בחרי עיר</label>
+                <select name="city" class="form-select form-select-lg">
+                    <option value="">בחרי עיר</option>
+                    @foreach (var city in cities)
+                    {
+                        if (city == selectedCity)
+                        {
+                            <option value="@city" selected>@city</option>
+                        }
+                        else
+                        {
+                            <option value="@city">@city</option>
+                        }
+                    }
+                </select>
+            </div>
+
+            <div class="col-12 col-md-4 d-flex align-items-end">
+                <button class="btn btn-primary btn-lg w-100" type="submit">הצג סניפים</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card p-3 mb-4 shadow-sm">
+        <h2 class="h4 mb-3">תזכורת כללית</h2>
+        <div style="font-size:18px;">
+            מומלץ לבדוק אחת לתקופה אם יש מספיק מלאי של התרופות הקבועות שלך, במיוחד לפני סופי שבוע וחגים.
+        </div>
+    </div>
+
+    <div class="card p-3 shadow-sm">
+        <h2 class="h4 mb-3">סניפי בית מרקחת</h2>
+
+        @if (string.IsNullOrWhiteSpace(selectedCity))
+        {
+            <div class="text-muted" style="font-size:18px;">
+                נא לבחור עיר כדי לראות את הסניפים הזמינים.
+            </div>
+        }
+        else if (!branches.Any())
+        {
+            <div class="text-muted" style="font-size:18px;">
+                לא נמצאו סניפים בעיר @selectedCity.
+            </div>
+        }
+        else
+        {
+            <div class="mb-3" style="font-size:18px;">
+                <strong>העיר שנבחרה:</strong> @selectedCity
+            </div>
+
+            <div class="list-group">
+                @foreach (var branch in branches)
+                {
+                    <div class="list-group-item d-flex justify-content-between align-items-center flex-wrap gap-3">
+                        <div style="font-size:18px;">
+                            <div><strong>@branch.BranchName</strong></div>
+                            <div>@branch.Address</div>
+                            <div><strong>טלפון:</strong> @branch.PhoneNumber</div>
+                        </div>
+
+                        <a class="btn btn-success btn-lg"
+                           href="tel:@branch.PhoneNumber.Replace("-", "")">
+                            חיוג
+                        </a>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="mt-4">
+        <a class="btn btn-link" href="/Prototype/Services">חזרה לשירותים</a>
+    </div>
+</div>

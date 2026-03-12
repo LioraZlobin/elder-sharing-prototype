@@ -1,4 +1,5 @@
-﻿@using Microsoft.AspNetCore.Html
+﻿@using System.Linq
+@using Microsoft.AspNetCore.Html
 @using ElderSharingPrototype.Models
 
 @{
@@ -20,44 +21,467 @@
     var btnStyle = isAdapted ? "font-size:24px; padding:16px 22px;" : "font-size:18px; padding:10px 14px;";
     var dangerBtnStyle = isAdapted ? "font-size:26px; padding:16px 22px;" : "font-size:20px; padding:10px 14px;";
 
-    var cardShellClass = isAdapted ? "card h-100 shadow-sm" : "card h-100";
-    var cardTitleSize = isAdapted ? "font-size:22px;" : "font-size:18px;";
-    var descStyle = isAdapted ? "font-size:20px; line-height:1.7;" : "font-size:16px; line-height:1.5;";
-    var iconStyle = isAdapted ? "font-size:56px; line-height:1;" : "display:none;";
-
     Func<string, string> MaybeDesc = (d) => withExplanation ? d : "";
 
-    // ✅ הרשאות יורשות לפי רמה (A ⊂ B ⊂ C)
-    bool canUseLevelA = true;                 // כולם
-    bool canUseLevelB = (level == "B" || level == "C");
-    bool canUseLevelC = (level == "C");
+    int currentLevelOrder = level == "A" ? 1 : level == "B" ? 2 : 3;
 
-    // ===== ROBOT UI (רק בממשק מותאם) =====
+    // ===== ROBOT UI =====
     string robotLine = level == "A"
-        ? "כדי לשמור על פרטיות גבוהה, נתחיל בשירותים כלליים ובטוחים."
+        ? "בחרתי עבורך שירות פתוח מתוך רמה 1."
         : level == "B"
-            ? "אני יכולה לעזור יותר אם תרצי. בחרת שיתוף בינוני — מצוין."
-            : "ברמה 3 יש לי יכולת לעזור הרבה יותר (מיקרופון/מצלמה לפי אישור).";
+            ? "בחרתי עבורך שירות פתוח מתוך רמה 1 או רמה 2."
+            : "בחרתי עבורך שירות פתוח מתוך כל הרמות הזמינות לך.";
 
-    // ✅ המלצה רנדומלית שמגיעה מה-Controller (ViewBag)
     var recText = ViewBag.RobotRecText as string;
     var recUrl = ViewBag.RobotRecUrl as string;
-    var recAudio = ViewBag.RobotRecAudio as string; // ✅ שם קובץ mp3 כמו "rec_A_1.mp3"
-    var hasRec = !string.IsNullOrWhiteSpace(recText) && !string.IsNullOrWhiteSpace(recUrl);
+    var recAudio = ViewBag.RobotRecAudio as string;
+    var recBtnText = ViewBag.RobotRecButtonText as string;
 
-    // טקסט ברירת מחדל אם אין המלצה
+    var hasRec = !string.IsNullOrWhiteSpace(recText)
+                 && !string.IsNullOrWhiteSpace(recUrl)
+                 && !string.IsNullOrWhiteSpace(recAudio);
+
     string robotTip = hasRec ? recText! : "המלצה שלי עכשיו: תזכורת למדדים.";
-
-    // כפתור/כותרת של הפעולה המומלצת
     string primaryHref = hasRec ? recUrl! : "/Health/VitalsReminders";
-    string primaryTitle = "התחלת פעולה מומלצת";
-    string primaryBtnText = hasRec ? "פתחי את השירות המומלץ" : "פתח עכשיו";
-
-    // טקסט קטן שמופיע מתחת לכפתור
+    string primaryTitle = "השירות שנבחר עבורך";
+    string primaryBtnText = !string.IsNullOrWhiteSpace(recBtnText) ? recBtnText! : "פתחי שירות";
     string recommendedActionLabel = hasRec ? recText! : "תזכורת ללקיחת מדדים";
+
+    // אותם צבעים כמו ב-Intro
+    var level1Bg = "#fde7ea";
+    var level1Border = "#f6b7c0";
+    var level1IconColor = "#e53935";
+
+    var level2Bg = "#e7f1ff";
+    var level2Border = "#b3d4ff";
+    var level2IconColor = "#1e88e5";
+
+    var level3Bg = "#e9f7ef";
+    var level3Border = "#b7e4c7";
+    var level3IconColor = "#43a047";
+
+    var categories = new List<ServiceCategoryVm>
+    {
+        new ServiceCategoryVm
+        {
+            Key = "meds",
+            Title = "תרופות",
+            Emoji = "💊",
+            Services = new List<ServiceItemVm>
+            {
+                new ServiceItemVm
+                {
+                    Title = "תזכורת כללית לנטילת תרופות",
+                    Desc = MaybeDesc("תזכורת כללית ללא שם תרופה."),
+                    Href = "/Health/MedicationReminders?mode=basic",
+                    RequiredLevelOrder = 1,
+                    OriginLevelOrder = 1
+                },
+                new ServiceItemVm
+                {
+                    Title = "ניהול תרופות ותזכורות",
+                    Desc = MaybeDesc("ניהול רשימת תרופות קבועות והוספת תזכורות לפי שם התרופה."),
+                    Href = "/Health/MedicationReminders?mode=detailed",
+                    RequiredLevelOrder = 2,
+                    OriginLevelOrder = 2
+                },
+                 new ServiceItemVm
+                {
+                    Title = "עדכון מלאי וקשר עם בית המרקחת",
+                    Desc = MaybeDesc("בדיקת מלאי תרופות וקשר ישיר עם סניף בית מרקחת."),
+                    Href = "/Health/PharmacyContact",
+                    RequiredLevelOrder = 3,
+                    OriginLevelOrder = 3
+                }
+            }
+        },
+        new ServiceCategoryVm
+        {
+            Key = "vitals",
+            Title = "מדדים רפואיים",
+            Emoji = "🩺",
+            Services = new List<ServiceItemVm>
+            {
+                new ServiceItemVm
+                {
+                    Title = "תזכורת ללקיחת מדדים",
+                    Desc = MaybeDesc("תזכורת למדדים כמו לחץ דם, סוכר ודופק."),
+                    Href = "/Health/VitalsReminders",
+                    RequiredLevelOrder = 1,
+                    OriginLevelOrder = 1
+                },
+                new ServiceItemVm
+                {
+                    Title = "מדידת מדדים חד־פעמית",
+                    Desc = MaybeDesc("מדידה חד־פעמית של מדדים רפואיים."),
+                    Href = "/Health/Measurements?mode=onetime",
+                    RequiredLevelOrder = 2,
+                    OriginLevelOrder = 2
+                },
+                new ServiceItemVm
+                {
+                    Title = "מדידת מדדים ושמירת היסטוריה",
+                    Desc = MaybeDesc("מדידת מדדים עם שמירה להיסטוריה אישית."),
+                    Href = "/Health/Measurements?mode=history",
+                    RequiredLevelOrder = 3,
+                    OriginLevelOrder = 3
+                }
+            }
+        },
+        new ServiceCategoryVm
+        {
+            Key = "doctor",
+            Title = "רופא / קופת חולים",
+            Emoji = "🏥",
+            Services = new List<ServiceItemVm>
+            {
+                new ServiceItemVm
+                {
+                    Title = "המלצה לביקור אצל רופא",
+                    Desc = MaybeDesc("המלצה כללית לביקור אצל רופא או ביצוע בדיקות שגרתיות."),
+                    Href = "/Health/CheckupRecommendations",
+                    RequiredLevelOrder = 1,
+                    OriginLevelOrder = 1
+                },
+                new ServiceItemVm
+                {
+                    Title = "זימון תור לרופא",
+                    Desc = MaybeDesc("בקשת תור לרופא לפי תחום טיפול."),
+                    Href = "/Health/AppointmentRequest",
+                    RequiredLevelOrder = 2,
+                    OriginLevelOrder = 2
+                },
+                new ServiceItemVm
+                {
+                    Title = "תור טלפוני / וידאו לרופא",
+                    Desc = MaybeDesc("שיחה טלפונית או וידאו עם רופא (דמו)."),
+                    Href = "/Health/TeleVisit",
+                    RequiredLevelOrder = 3,
+                    OriginLevelOrder = 3
+                }
+            }
+        },
+        new ServiceCategoryVm
+        {
+            Key = "audio",
+            Title = "התראות / קשר בחירום",
+            Emoji = "🔊",
+            Services = new List<ServiceItemVm>
+            {
+                new ServiceItemVm
+                {
+                    Title = "התרעה קולית במצבי חריגה",
+                    Desc = MaybeDesc("התראה קולית במקרה של חריגה או סיכון סביבתי."),
+                    Href = "/Health/AudioAlerts",
+                    RequiredLevelOrder = 1,
+                    OriginLevelOrder = 1
+                },
+                new ServiceItemVm
+                {
+                    Title = "איש קשר והודעת חירום",
+                    Desc = MaybeDesc("שמירת פרטי איש קשר לחירום וכתיבת הודעת טקסט במקרה חירום."),
+                    Href = "/Health/EmergencyContact",
+                    RequiredLevelOrder = 2,
+                    OriginLevelOrder = 2
+                },
+                new ServiceItemVm
+                {
+                    Title = "יצירת קשר חזותי במקרה חירום",
+                    Desc = MaybeDesc("יצירת קשר חזותי עם איש קשר במקרה חירום."),
+                    Href = "/Health/EmergencyVideo",
+                    RequiredLevelOrder = 3,
+                    OriginLevelOrder = 3
+                }
+            }
+        }
+    };
+
+    var futureLevel2Categories = categories
+        .Select(c => new ServiceCategoryVm
+        {
+            Key = c.Key,
+            Title = c.Title,
+            Emoji = c.Emoji,
+            Services = c.Services.Where(s => s.RequiredLevelOrder == 2).ToList()
+        })
+        .ToList();
+
+    var futureLevel3Categories = categories
+        .Select(c => new ServiceCategoryVm
+        {
+            Key = c.Key,
+            Title = c.Title,
+            Emoji = c.Emoji,
+            Services = c.Services.Where(s => s.RequiredLevelOrder == 3).ToList()
+        })
+        .ToList();
+
+    bool showExtraServicesAccordion = currentLevelOrder < 3;
 }
 
-<div class="container py-4" style="max-width: 1100px;">
+<style>
+    .services-board-title {
+        font-weight: 800;
+        margin-bottom: 18px;
+    }
+
+    .level-section-title {
+        margin-bottom: 20px;
+    }
+
+    .level-header-card {
+        position: relative;
+        border-radius: 18px;
+        padding: 18px 86px 18px 22px;
+        border: 2px solid;
+        min-height: 88px;
+        display: flex;
+        align-items: center;
+        font-weight: 800;
+        font-size: 28px;
+        line-height: 1.35;
+    }
+
+    .level-header-icon {
+        position: absolute;
+        top: 14px;
+        right: 14px;
+        width: 56px;
+        height: 56px;
+    }
+
+    .level-header-level1 {
+        background: #fde7ea;
+        border-color: #f6b7c0;
+    }
+
+    .level-header-level2 {
+        background: #e7f1ff;
+        border-color: #b3d4ff;
+    }
+
+    .level-header-level3 {
+        background: #e9f7ef;
+        border-color: #b7e4c7;
+    }
+
+    .service-category-col {
+        display: flex;
+    }
+
+    .service-category-card {
+        width: 100%;
+        border-radius: 24px;
+        border: 1px solid rgba(15,23,42,0.08);
+        background: linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(248,251,255,0.98) 100%);
+        box-shadow: 0 10px 30px rgba(15,23,42,0.08);
+        padding: 22px 18px 18px;
+        display: flex;
+        flex-direction: column;
+        min-height: 100%;
+    }
+
+    .service-category-header {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 120px;
+        margin-bottom: 14px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgba(15,23,42,0.07);
+    }
+
+    .service-category-emoji {
+        font-size: 42px;
+        line-height: 1;
+        margin-bottom: 10px;
+    }
+
+    .service-category-name {
+        text-align: center;
+        font-weight: 800;
+        font-size: 22px;
+        line-height: 1.35;
+        min-height: 60px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .service-items-list {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        flex: 1;
+    }
+
+    .service-item-box {
+        border: 1px solid rgba(15,23,42,0.08);
+        border-radius: 20px;
+        background: #fff;
+        padding: 16px;
+        min-height: 250px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        box-shadow: 0 4px 12px rgba(15,23,42,0.04);
+    }
+
+.service-level-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border-radius: 999px;
+    padding: 6px 12px 6px 10px;
+    font-size: 14px;
+    font-weight: 700;
+    width: fit-content;
+    margin-bottom: 12px;
+    border: 1px solid transparent;
+    line-height: 1;
+}
+
+.service-level-badge-icon {
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 22px;
+}
+
+.service-level-badge-icon svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+
+.service-level-badge.level-badge-1 {
+    background: #fde7ea;
+    border-color: #f6b7c0;
+    color: #7a1f28;
+}
+
+.service-level-badge.level-badge-2 {
+    background: #e7f1ff;
+    border-color: #b3d4ff;
+    color: #0b5fc1;
+}
+
+.service-level-badge.level-badge-3 {
+    background: #e9f7ef;
+    border-color: #b7e4c7;
+    color: #2e7d32;
+}
+
+    .service-item-title {
+        font-weight: 800;
+        font-size: 20px;
+        line-height: 1.4;
+        margin-bottom: 10px;
+        min-height: 56px;
+    }
+
+    .service-item-desc {
+        color: #6c757d;
+        font-size: 17px;
+        line-height: 1.6;
+        margin-bottom: 16px;
+        flex: 1;
+    }
+
+    .service-btn-wrap {
+        margin-top: auto;
+    }
+
+    .empty-category-box {
+        min-height: 120px;
+        border: 1px dashed rgba(108,117,125,0.35);
+        border-radius: 18px;
+        background: #fafafa;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 16px;
+        font-size: 16px;
+        line-height: 1.5;
+    }
+
+    .extra-services-shell {
+        border-radius: 24px;
+        overflow: hidden;
+        border: 1px solid rgba(15,23,42,0.08);
+        box-shadow: 0 10px 24px rgba(15,23,42,0.08);
+        background: #fff;
+    }
+
+    .extra-services-btn {
+        width: 100%;
+        text-align: right;
+        font-weight: 800;
+        background: #fff;
+        border: none;
+        padding: 18px 22px;
+        font-size: 22px;
+    }
+
+    .locked-level-title {
+        margin-bottom: 18px;
+    }
+
+    .section-divider {
+        height: 1px;
+        background: rgba(15,23,42,0.08);
+        margin: 28px 0;
+    }
+
+    @@media (max-width: 1199.98px) {
+        .service-item-box {
+            min-height: 230px;
+        }
+    }
+
+    @@media (max-width: 767.98px) {
+        .level-header-card {
+            font-size: 22px;
+            padding: 16px 72px 16px 18px;
+        }
+
+        .level-header-icon {
+            width: 46px;
+            height: 46px;
+            top: 12px;
+            right: 12px;
+        }
+
+        .service-category-emoji {
+            font-size: 36px;
+        }
+
+        .service-category-name {
+            font-size: 20px;
+            min-height: auto;
+        }
+
+        .service-item-title {
+            font-size: 18px;
+            min-height: auto;
+        }
+
+        .service-item-box {
+            min-height: auto;
+        }
+
+        .extra-services-btn {
+            font-size: 18px;
+        }
+    }
+</style>
+
+<div class="container py-4" style="max-width: 1380px;">
 
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
         <div>
@@ -93,12 +517,9 @@
 
     <hr class="my-4" />
 
-    @* =========================
-       ✅ ROBOT UI (רק בממשק מותאם)
-       ========================= *@
     @if (isAdapted)
     {
-            <div class="mb-4 p-4" style="border-radius:18px; border:1px solid rgba(15,23,42,0.08); background: rgba(255,255,255,0.88); box-shadow: 0 10px 24px rgba(15,23,42,0.08);">
+        <div class="mb-4 p-4" style="border-radius:18px; border:1px solid rgba(15,23,42,0.08); background: rgba(255,255,255,0.88); box-shadow: 0 10px 24px rgba(15,23,42,0.08);">
             <div class="d-flex align-items-start gap-3">
                 <div style="font-size:44px; line-height:1;">🤖</div>
 
@@ -121,7 +542,7 @@
             <div class="mt-3 p-3" style="border-radius:16px; background: rgba(230,241,255,0.85); border: 1px solid rgba(37,140,251,0.25);">
                 <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
                     <div style="font-size:22px; font-weight:800;">
-                        ✅ @primaryTitle
+                        🤖 @primaryTitle
                     </div>
                     <a class="btn btn-primary btn-lg" href="@primaryHref" style="@btnStyle">
                         @primaryBtnText
@@ -132,137 +553,172 @@
                 </div>
             </div>
         </div>
-
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
-            <h2 class="m-0" style="font-size:24px; font-weight:800;">שירותים נוספים</h2>
-            <span class="text-muted" style="font-size:18px;">בחרי שירות כדי להמשיך</span>
-        </div>
     }
 
-    <div class="row g-3">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+    <h2 class="services-board-title m-0" style="font-size:30px;">השירותים שלי</h2>
+    <span class="text-muted" style="@textStyle">השירותים הפתוחים עבורך, מסודרים לפי נושאים</span>
+</div>
 
-        @ServiceCard(
-            "תזכורת ללקיחת מדדים",
-            MaybeDesc("תזכורת למדדים: לחץ דם, סוכר."),
-            "🩺",
-            true,
-            "/Health/VitalsReminders",
-            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
-            "pastel-1"
-        )
+@{
+    var visibleCategories = categories
+        .Select(c => new ServiceCategoryVm
+        {
+            Key = c.Key,
+            Title = c.Title,
+            Emoji = c.Emoji,
+            Services = c.Services.Where(s => s.RequiredLevelOrder <= currentLevelOrder).ToList()
+        })
+        .ToList();
+}
 
-        @ServiceCard(
-            "תזכורת לתרופות",
-            MaybeDesc("תזכורת כללית ללקיחת תרופות (ללא שם תרופה)."),
-            "💊",
-            canUseLevelA,
-            "/Health/MedicationReminders",
-            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
-            "pastel-2"
-        )
+<div class="row g-4">
+    @foreach (var category in visibleCategories)
+    {
+        <div class="col-12 col-md-6 col-xl-3 service-category-col">
+            <div class="service-category-card">
+                <div class="service-category-header">
+                    <div class="service-category-emoji">@category.Emoji</div>
+                    <div class="service-category-name">@category.Title</div>
+                </div>
 
-        @ServiceCard(
-            "המלצה לביקור רופא / בדיקות שגרתיות",
-            MaybeDesc("המלצות כלליות לתזמון ביקור רופא או ביצוע בדיקות שגרתיות."),
-            "📅",
-            canUseLevelA,
-            "/Health/CheckupRecommendations",
-            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
-            "pastel-3"
-        )
+                <div class="service-items-list">
+                    @if (category.Services.Any())
+                    {
+                        @foreach (var service in category.Services)
+                        {
+                            @RenderServiceBox(service, true, btnStyle, withExplanation, isAdapted, level1IconColor, level2IconColor, level3IconColor)
+                        }
+                    }
+                    else
+                    {
+                        <div class="empty-category-box">
+                            אין שירות פתוח בקטגוריה זו
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    }
+</div>
 
-        @ServiceCard(
-            "התרעה קולית במצבי חריגה / סיכון סביבתי",
-            MaybeDesc("התראה קולית (דמו) במקרה של חריגה או סיכון סביבתי."),
-            "🔊",
-            canUseLevelA,
-            "/Health/AudioAlerts",
-            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
-            "pastel-4"
-        )
+    @if (showExtraServicesAccordion)
+    {
+        <div class="mt-5">
+            <div class="extra-services-shell">
+                <button class="extra-services-btn collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#extraServicesCollapse" aria-expanded="false" aria-controls="extraServicesCollapse">
+                    שירותים נוספים
+                </button>
 
-        @ServiceCard(
-            "תזכורות תרופות עם שם תרופה",
-            MaybeDesc("התראות לתרופות לפי שם ושעה."),
-            "💊",
-            canUseLevelB,
-            "/Health/MedicationReminders",
-            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
-            "pastel-5"
-        )
+                <div id="extraServicesCollapse" class="collapse">
+                    <div class="p-4 p-md-5" style="background:#fff;">
+                        @if (currentLevelOrder == 1)
+                        {
+                            <div class="locked-level-title">
+                                @Html.Raw(GetLevelHeaderHtml(2, isAdapted, level1IconColor, level2IconColor, level3IconColor))
+                            </div>
 
-        @ServiceCard(
-            "ניהול רשימת תרופות קבועות",
-            MaybeDesc("צפייה/עדכון ברשימת התרופות הקבועות."),
-            "📋",
-            canUseLevelB,
-            "/Health/MedicationList",
-            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
-            "pastel-6"
-        )
+                            <div class="row g-4">
+                                @foreach (var category in futureLevel2Categories)
+                                {
+                                    <div class="col-12 col-md-6 col-xl-3 service-category-col">
+                                        <div class="service-category-card">
+                                            <div class="service-category-header">
+                                                <div class="service-category-emoji">@category.Emoji</div>
+                                                <div class="service-category-name">@category.Title</div>
+                                            </div>
 
-        @ServiceCard(
-            "זימון תור לרופא",
-            MaybeDesc("בקשת תור לרופא כולל בחירת תחום טיפול (דמו)."),
-            "🏥",
-            canUseLevelB,
-            "/Health/AppointmentRequest",
-            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
-            "pastel-1"
-        )
+                                            <div class="service-items-list">
+                                                @if (category.Services.Any())
+                                                {
+                                                    @foreach (var service in category.Services)
+                                                    {
+                                                        @RenderServiceBox(service, false, btnStyle, withExplanation, isAdapted, level1IconColor, level2IconColor, level3IconColor)
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <div class="text-muted text-center">אין שירות נוסף בקטגוריה זו ברמה 2</div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
 
-        @ServiceCard(
-            "פרטי איש קשר לחירום",
-            MaybeDesc("שמירת פרטי איש קשר לצורך חירום."),
-            "📞",
-            canUseLevelB,
-            "/Health/EmergencyContact",
-            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
-            "pastel-2"
-        )
+                            <div class="section-divider"></div>
 
-        @ServiceCard(
-            "יצירת קשר טקסטואלי במקרה חירום",
-            MaybeDesc("שליחת הודעת טקסט (דמו) לאיש קשר במקרה חירום."),
-            "💬",
-            canUseLevelB,
-            "/Health/EmergencyText",
-            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
-            "pastel-3"
-        )
+                            <div class="locked-level-title">
+                                @Html.Raw(GetLevelHeaderHtml(3, isAdapted, level1IconColor, level2IconColor, level3IconColor))
+                            </div>
 
-        @ServiceCard(
-            "מדידת מדדים (WiFi)",
-            MaybeDesc("קריאת מדדים דרך WiFi. ברמה 2 מוצג חד־פעמי, וברמה 3 נשמר למסד נתונים ומופיע בהיסטוריה."),
-            "📈",
-            canUseLevelB,
-            "/Health/Measurements",
-            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
-            "pastel-4"
-        )
+                            <div class="row g-4">
+                                @foreach (var category in futureLevel3Categories)
+                                {
+                                    <div class="col-12 col-md-6 col-xl-3 service-category-col">
+                                        <div class="service-category-card">
+                                            <div class="service-category-header">
+                                                <div class="service-category-emoji">@category.Emoji</div>
+                                                <div class="service-category-name">@category.Title</div>
+                                            </div>
 
+                                            <div class="service-items-list">
+                                                @if (category.Services.Any())
+                                                {
+                                                    @foreach (var service in category.Services)
+                                                    {
+                                                        @RenderServiceBox(service, false, btnStyle, withExplanation, isAdapted, level1IconColor, level2IconColor, level3IconColor)
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <div class="text-muted text-center">אין שירות נוסף בקטגוריה זו ברמה 3</div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                        else if (currentLevelOrder == 2)
+                        {
+                            <div class="locked-level-title">
+                                @Html.Raw(GetLevelHeaderHtml(3, isAdapted, level1IconColor, level2IconColor, level3IconColor))
+                            </div>
 
-        @ServiceCard(
-            "תור טלפוני / תור וידיאו",
-            MaybeDesc("פתיחת מיקרופון/מצלמה לצורך תור טלפוני או וידיאו (דמו)."),
-            "🎥",
-            canUseLevelC,
-            "/Health/TeleVisit",
-            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
-            "pastel-5"
-        )
+                            <div class="row g-4">
+                                @foreach (var category in futureLevel3Categories)
+                                {
+                                    <div class="col-12 col-md-6 col-xl-3 service-category-col">
+                                        <div class="service-category-card">
+                                            <div class="service-category-header">
+                                                <div class="service-category-emoji">@category.Emoji</div>
+                                                <div class="service-category-name">@category.Title</div>
+                                            </div>
 
-        @ServiceCard(
-            "פרטי איש קשר ויצירת קשר חזותי בחירום",
-            MaybeDesc("יצירת קשר חזותי עם איש קשר (מצלמה+מיקרופון) במקרה חירום (דמו)."),
-            "🚨",
-            canUseLevelC,
-            "/Health/EmergencyVideo",
-            isAdapted, withExplanation, cardShellClass, cardTitleSize, descStyle, iconStyle, btnStyle,
-            "pastel-6"
-        )
-
-    </div>
+                                            <div class="service-items-list">
+                                                @if (category.Services.Any())
+                                                {
+                                                    @foreach (var service in category.Services)
+                                                    {
+                                                        @RenderServiceBox(service, false, btnStyle, withExplanation, isAdapted, level1IconColor, level2IconColor, level3IconColor)
+                                                    }
+                                                }
+                                                else
+                                                {
+                                                    <div class="text-muted text-center">אין שירות נוסף בקטגוריה זו ברמה 3</div>
+                                                }
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
 
     <div class="modal fade" id="upgradeModal" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
@@ -294,7 +750,6 @@
 
 @section Scripts {
 <script>
-    // ✅ FIX: Modal becomes unclickable due to stacking context (backdrop-filter etc.)
     (function () {
         const style = document.createElement("style");
         style.innerHTML = `
@@ -312,43 +767,30 @@
         modal.show();
     }
 
-    // =========================
-    // 🤖 ROBOT AUDIO (MP3) + CONTROLS
-    // =========================
     (function () {
         const isAdapted = @( (uiAdaptation == UiAdaptation.Adapted) ? "true" : "false" );
         if (!isAdapted) return;
 
-        const level = "@level"; // A/B/C
-
-        // הטקסט שמופיע ב"רובוט אומר"
+        const level = "@level";
         const recText = @Html.Raw(System.Text.Json.JsonSerializer.Serialize((string)(ViewBag.RobotRecText ?? "")));
-
-        // ✅ שם קובץ ה-mp3 שמגיע מהקונטרולר (מנוע ההמלצות)
         const recAudioFile = @Html.Raw(System.Text.Json.JsonSerializer.Serialize((string)(ViewBag.RobotRecAudio ?? "")));
 
-        // fallback לפי רמה (אם משום מה לא הגיע AudioFile)
         const fallbackByLevel = {
-            A: "/audio/robot/rec_A_1.mp3",
-            B: "/audio/robot/rec_B_1.mp3",
-            C: "/audio/robot/rec_C_1.mp3"
+            A: "/audio/robot/medication_basic.mp3",
+            B: "/audio/robot/medication_management.mp3",
+            C: "/audio/robot/pharmacy_contact.mp3"
         };
 
         const replayBtn = document.getElementById("robotReplayBtn");
         const stopBtn = document.getElementById("robotStopBtn");
-
         const robotBox = document.querySelector(".robot-face")?.parentElement;
-
         let audio = null;
 
         function pickAudioSrc() {
             const lvl = (level || "A").trim().toUpperCase();
             const file = (recAudioFile || "").trim();
 
-            // אם הגיע קובץ מהשרת – ננגן אותו בדיוק
             if (file) return "/audio/robot/" + file;
-
-            // אחרת fallback ברמה
             return fallbackByLevel[lvl] || fallbackByLevel.A;
         }
 
@@ -362,7 +804,6 @@
         }
 
         function playAudio() {
-            // אם אין טקסט ואין קובץ – לא מנגנים
             if (!recText && !recAudioFile) return;
 
             stopAudio();
@@ -383,7 +824,6 @@
         if (replayBtn) replayBtn.addEventListener("click", playAudio);
         if (stopBtn) stopBtn.addEventListener("click", stopAudio);
 
-        // autoplay עדין אחרי טעינה
         window.addEventListener("load", () => {
             setTimeout(playAudio, 250);
         });
@@ -392,51 +832,169 @@
 }
 
 @functions {
-    public IHtmlContent ServiceCard(
-        string title,
-        string desc,
-        string icon,
-        bool allowed,
-        string href,
-        bool isAdapted,
-        bool withExplanation,
-        string cardShellClass,
-        string cardTitleSize,
-        string descStyle,
-        string iconStyle,
-        string btnStyleInline,
-        string? pastelClass = null
-    )
+    private static string ShieldBase(string tintColorHex, string innerSvg)
     {
-        var btnText = allowed ? "פתח שירות" : "שירות חסום";
-        var baseBtnClass = allowed ? "btn btn-primary w-100 btn-lg" : "btn btn-outline-secondary w-100 btn-lg";
-        var action = allowed
-            ? $"<a class='{baseBtnClass}' style='{btnStyleInline}' href='{href}'>{btnText}</a>"
-            : $"<button type='button' class='{baseBtnClass}' style='{btnStyleInline}' onclick=\"openUpgradeModal('{title}')\">{btnText}</button>";
+        return $@"
+<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64' style='width:100%;height:100%;'>
+  <defs>
+    <clipPath id='shieldClipServices'>
+      <path d='M32 6 C32 6 44 11 54 14 V30 C54 44 44.5 54 32 60 C19.5 54 10 44 10 30 V14 C20 11 32 6 32 6 Z'/>
+    </clipPath>
+  </defs>
 
-        var descHtml = (!string.IsNullOrWhiteSpace(desc) && withExplanation)
-            ? $"<p class='text-muted mb-4' style='{descStyle}'>{desc}</p>"
-            : "";
+  <path d='M32 6 C32 6 44 11 54 14 V30 C54 44 44.5 54 32 60 C19.5 54 10 44 10 30 V14 C20 11 32 6 32 6 Z'
+        fill='white'/>
 
-        var iconHtml = $"<div style='{iconStyle}'>{icon}</div>";
+  <g clip-path='url(#shieldClipServices)'>
+    <rect x='0' y='0' width='64' height='64' fill='{tintColorHex}' opacity='0.14'/>
+  </g>
 
-        var headerHtml = isAdapted
-            ? $@"<div class='d-flex align-items-center gap-3 mb-2'>{iconHtml}<h2 class='mb-0' style='{cardTitleSize}'>{title}</h2></div>"
-            : $@"<div class='mb-2'><h2 class='mb-0' style='{cardTitleSize}'>{title}</h2></div>";
+  <path d='M32 6 C32 6 44 11 54 14 V30 C54 44 44.5 54 32 60 C19.5 54 10 44 10 30 V14 C20 11 32 6 32 6 Z'
+        fill='none' stroke='#8b8f97' stroke-width='2.2' stroke-linejoin='round'/>
 
-        var cardExtraClass = (isAdapted && !string.IsNullOrWhiteSpace(pastelClass)) ? $" {pastelClass}" : "";
-
-        var html = $@"
-<div class='col-12 col-md-6 col-lg-4'>
-  <div class='{cardShellClass}{cardExtraClass}'>
-    <div class='card-body d-flex flex-column'>
-      {headerHtml}
-      {descHtml}
-      <div class='mt-auto'>{action}</div>
-    </div>
-  </div>
-</div>";
-
-        return new HtmlString(html);
+  {innerSvg}
+</svg>";
     }
+
+    public static IHtmlContent PrivacyIcon(string colorHex)
+    {
+        var inner = $@"
+  <g>
+    <path d='M25 29 v-4 c0-4 3-7 7-7 s7 3 7 7 v4' fill='none' stroke='{colorHex}' stroke-width='3.2' stroke-linecap='round'/>
+    <rect x='22.5' y='29' width='19' height='15.5' rx='3' fill='{colorHex}'/>
+    <circle cx='32' cy='37' r='2.1' fill='white' opacity='0.95'/>
+  </g>";
+        return new HtmlString(ShieldBase(colorHex, inner));
+    }
+
+    public static IHtmlContent SharingIcon140(string colorHex)
+    {
+        var inner = $@"
+  <g transform='translate(-2,0) scale(1.12)'>
+    <path d='M28 30 L36 26' stroke='{colorHex}' stroke-width='3' stroke-linecap='round'/>
+    <path d='M28 30 L36 34' stroke='{colorHex}' stroke-width='3' stroke-linecap='round'/>
+    <circle cx='24.5' cy='30' r='4.2' fill='{colorHex}'/>
+    <circle cx='39.5' cy='25' r='4.2' fill='{colorHex}'/>
+    <circle cx='39.5' cy='35' r='4.2' fill='{colorHex}'/>
+    <circle cx='24.5' cy='30' r='1.2' fill='white' opacity='0.95'/>
+    <circle cx='39.5' cy='25' r='1.2' fill='white' opacity='0.95'/>
+    <circle cx='39.5' cy='35' r='1.2' fill='white' opacity='0.95'/>
+  </g>";
+        return new HtmlString(ShieldBase(colorHex, inner));
+    }
+
+    public static IHtmlContent SelfDisplayIcon95(string colorHex)
+    {
+        var inner = $@"
+  <g fill='none'
+     stroke='{colorHex}'
+     stroke-width='2.6'
+     stroke-linecap='round'
+     stroke-linejoin='round'
+     transform='translate(0,0) scale(1.05)'>
+    <circle cx='32' cy='25' r='4.3' />
+    <circle cx='23.5' cy='26.5' r='3.7' />
+    <circle cx='40.5' cy='26.5' r='3.7' />
+    <path d='M24 40 c2.8-6.3 13.2-6.3 16 0' />
+    <path d='M15.5 40 c2.0-5.0 9.5-5.0 11.2 0' />
+    <path d='M37.3 40 c2.0-5.0 9.5-5.0 11.2 0' />
+  </g>";
+        return new HtmlString(ShieldBase(colorHex, inner));
+    }
+
+    public class ServiceItemVm
+    {
+        public string Title { get; set; } = "";
+        public string Desc { get; set; } = "";
+        public string Href { get; set; } = "";
+        public int RequiredLevelOrder { get; set; }
+        public int OriginLevelOrder { get; set; }
+    }
+
+    public class ServiceCategoryVm
+    {
+        public string Key { get; set; } = "";
+        public string Title { get; set; } = "";
+        public string Emoji { get; set; } = "";
+        public List<ServiceItemVm> Services { get; set; } = new();
+    }
+
+    public string GetLevelHeaderHtml(int level, bool isAdapted, string level1IconColor, string level2IconColor, string level3IconColor)
+    {
+        string title = level == 1 ? "רמה 1 – פרטיות גבוהה"
+                     : level == 2 ? "רמה 2 – שיתוף בינוני"
+                     : "רמה 3 – שיתוף גבוה";
+
+        string cssClass = level == 1 ? "level-header-card level-header-level1"
+                        : level == 2 ? "level-header-card level-header-level2"
+                        : "level-header-card level-header-level3";
+
+        if (!isAdapted)
+        {
+            return $"<div class='{cssClass}'>{title}</div>";
+        }
+
+        string iconHtml = level == 1
+            ? PrivacyIcon(level1IconColor).ToString()
+            : level == 2
+                ? SharingIcon140(level2IconColor).ToString()
+                : SelfDisplayIcon95(level3IconColor).ToString();
+
+        return $@"<div class='{cssClass}'>
+                    <span class='level-header-icon'>{iconHtml}</span>
+                    <span>{title}</span>
+                  </div>";
+    }
+
+public IHtmlContent RenderServiceBox(ServiceItemVm service, bool allowed, string btnStyleInline, bool withExplanation, bool isAdapted, string level1IconColor, string level2IconColor, string level3IconColor)
+{
+    string badgeClass = service.OriginLevelOrder == 1 ? "service-level-badge level-badge-1"
+                      : service.OriginLevelOrder == 2 ? "service-level-badge level-badge-2"
+                      : "service-level-badge level-badge-3";
+
+    string iconHtml;
+
+    if (!isAdapted)
+    {
+        iconHtml = service.OriginLevelOrder == 1 ? "🔒"
+                 : service.OriginLevelOrder == 2 ? "🔗"
+                 : "🛡️";
+    }
+    else
+    {
+        iconHtml = service.OriginLevelOrder == 1
+            ? PrivacyIcon(level1IconColor).ToString()
+            : service.OriginLevelOrder == 2
+                ? SharingIcon140(level2IconColor).ToString()
+                : SelfDisplayIcon95(level3IconColor).ToString();
+    }
+
+    var badge = $@"
+<span class='{badgeClass}'>
+    <span class='service-level-badge-icon'>{iconHtml}</span>
+    <span>רמה {service.OriginLevelOrder}</span>
+</span>";
+
+    var descHtml = (!string.IsNullOrWhiteSpace(service.Desc) && withExplanation)
+        ? $"<div class='service-item-desc'>{service.Desc}</div>"
+        : "";
+
+    var actionHtml = allowed
+        ? $"<a class='btn btn-primary w-100 btn-lg' style='{btnStyleInline}' href='{service.Href}'>פתח שירות</a>"
+        : $"<button type='button' class='btn btn-outline-secondary w-100 btn-lg' style='{btnStyleInline}' onclick=\"openUpgradeModal('{service.Title}')\">שירות חסום</button>";
+
+    var html = $@"
+        <div class='service-item-box'>
+            <div>
+                {badge}
+                <div class='service-item-title'>{service.Title}</div>
+                {descHtml}
+            </div>
+            <div class='service-btn-wrap'>
+                {actionHtml}
+            </div>
+        </div>";
+
+    return new HtmlString(html);
+}
 }

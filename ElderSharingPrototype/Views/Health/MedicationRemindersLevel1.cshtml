@@ -1,0 +1,89 @@
+﻿@model ElderSharingPrototype.Models.Health.MedicationCenterViewModel
+@{
+    ViewData["Title"] = "תזכורת לתרופות";
+
+    var reminders = Model?.Reminders ?? new List<ElderSharingPrototype.Models.Health.ReminderItem>();
+}
+
+<div class="container py-4" style="max-width: 900px;">
+    <h1 class="mb-3">תזכורת לתרופות</h1>
+
+    <div class="alert alert-info" style="font-size:18px;">
+        איננו שומרים מידע מעבר לנדרש.
+        <br />
+        ברמה 1 זמינה תזכורת כללית ללקיחת תרופות בלבד, ללא שם תרופה וללא ניהול רשימת תרופות אישית.
+    </div>
+
+    @if (TempData["ReminderError"] != null)
+    {
+        <div class="alert alert-danger" style="font-size:18px;">
+            @TempData["ReminderError"]
+        </div>
+    }
+
+    <div class="card p-3 mb-4 shadow-sm">
+        <h2 class="h4 mb-3">הוספת תזכורת כללית</h2>
+
+        <form method="post" action="/Health/AddMedicationReminder" class="row g-3">
+            <input type="hidden" name="mode" value="basic" />
+
+            <div class="col-12 col-md-6">
+                <label class="form-label" style="font-size:18px;">סוג תזכורת</label>
+                <input class="form-control form-control-lg" value="תזכורת כללית ללקיחת תרופות" disabled />
+                <div class="form-text" style="font-size:16px;">
+                    ברמה זו לא נדרש להזין שם תרופה.
+                </div>
+            </div>
+
+            <div class="col-12 col-md-3">
+                <label class="form-label" style="font-size:18px;">שעה</label>
+                <input name="time" type="time" class="form-control form-control-lg" />
+            </div>
+
+            <div class="col-12 col-md-3">
+                <label class="form-label" style="font-size:18px;">הערה</label>
+                <input name="notes" class="form-control form-control-lg" placeholder="אופציונלי" />
+            </div>
+
+            <div class="col-12">
+                <button class="btn btn-primary btn-lg" type="submit">הוסף תזכורת</button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card p-3 shadow-sm">
+        <h2 class="h4 mb-3">התזכורות שלי</h2>
+
+        @if (reminders == null || !reminders.Any())
+        {
+            <div class="text-muted" style="font-size:18px;">אין עדיין תזכורות.</div>
+        }
+        else
+        {
+            <div class="list-group">
+                @foreach (var r in reminders)
+                {
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div style="font-size:18px;">
+                            <strong>@r.Title</strong> — @r.Time
+                            @if (!string.IsNullOrWhiteSpace(r.Notes))
+                            {
+                                <div class="text-muted">@r.Notes</div>
+                            }
+                        </div>
+
+                        <form method="post" action="/Health/DeleteMedicationReminder" class="m-0">
+                            <input type="hidden" name="id" value="@r.Id" />
+                            <input type="hidden" name="mode" value="basic" />
+                            <button class="btn btn-outline-danger">מחק</button>
+                        </form>
+                    </div>
+                }
+            </div>
+        }
+    </div>
+
+    <div class="mt-4">
+        <a class="btn btn-link" href="/Prototype/Services">חזרה לשירותים</a>
+    </div>
+</div>

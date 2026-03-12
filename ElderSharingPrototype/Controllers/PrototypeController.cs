@@ -373,23 +373,57 @@ namespace ElderSharingPrototype.Controllers
             var level = HttpContext.Session.GetString("SharingLevel") ?? "A";
             ViewBag.Level = level;
 
-            // 🤖 המלצה רנדומלית לפי רמה (לא חוזרת פעמיים ברצף)
-            var lastKey = HttpContext.Session.GetString("LastRobotRecKey");
-            var rec = RobotRecommendationEngine.GetRandom(level, lastKey);
+            // 🤖 כל השירותים האפשריים עם רמות
+            var robotOptions = new List<(string Key, string LevelCode, string Text, string Url, string AudioFile, string ButtonText)>
+    {
+        // רמה 1
+        ("alert_warning","A","כאן מוצגת התרעה קולית במקרה של מצב חריג כמו חום גבוה או סכנה סביבתית.","/Health/AudioAlerts","alert_warning.mp3","פתחי התרעה קולית"),
+        ("doctor_recommendation","A","כאן ניתן לקבל המלצה כללית לביקור אצל רופא או לבצע בדיקות שגרתיות.","/Health/CheckupRecommendations","doctor_recommendation.mp3","פתחי המלצה לרופא"),
+        ("measurements_reminder","A","כאן ניתן לקבל תזכורת לבדיקת מדדים רפואיים כמו לחץ דם או סוכר.","/Health/VitalsReminders","measurements_reminder.mp3","פתחי תזכורת למדדים"),
+        ("medication_basic","A","כאן ניתן ליצור תזכורת כללית ללקיחת תרופות.","/Health/MedicationReminders?mode=basic","medication_basic.mp3","פתחי תזכורת לתרופות"),
 
-            // נשמור בסשן כדי למנוע חזרה ברצף + (אופציונלי) לשימושים נוספים
-            HttpContext.Session.SetString("LastRobotRecKey", rec.ServiceKey);
-            HttpContext.Session.SetString("LastRobotRecText", rec.Text ?? "");
-            HttpContext.Session.SetString("LastRobotRecUrl", rec.TargetUrl ?? "");
+        // רמה 2
+        ("emergency_contact","B","כאן ניתן לשמור איש קשר לחירום ולשלוח אליו הודעה במקרה הצורך.","/Health/EmergencyContact","emergency_contact.mp3","פתחי איש קשר לחירום"),
+        ("doctor_appointment","B","כאן ניתן להזמין תור לרופא לפי תחום הטיפול.","/Health/AppointmentRequest","doctor_appointment.mp3","פתחי זימון תור"),
+        ("dynamic_measurements","B","כאן ניתן לבצע מדידה חד פעמית של מדדים רפואיים. המדידה מוצגת על המסך בלבד ואינה נשמרת בהיסטוריה.","/Health/Measurements","dynamic_measurements.mp3","פתחי מדדים רפואיים"),
+        ("medication_management","B","כאן ניתן לנהל רשימת תרופות קבועות ולהוסיף תזכורות.","/Health/MedicationReminders?mode=detailed","medication_management.mp3","פתחי ניהול תרופות"),
 
-            // ✅ מה שמוצג בדף
-            ViewBag.RobotRecKey = rec.ServiceKey;      // 🔑 חשוב: זה מה שה-JS משתמש כדי לבחור MP3 נכון
-            ViewBag.RobotRecText = rec.Text;
-            ViewBag.RobotRecUrl = rec.TargetUrl;
-            ViewBag.RobotRecAudio = rec.AudioFile;      // למשל "rec_B_2.mp3"
-            ViewBag.RobotRecIsQuestion = rec.IsQuestion;
+        // רמה 3
+        ("video_contact","C","כאן ניתן ליצור שיחת וידאו עם איש קשר קרוב במקרה חירום.","/Health/EmergencyVideo","video_contact.mp3","פתחי שיחת וידאו"),
+        ("doctor_video_call","C","כאן ניתן לבצע שיחת טלפון או וידאו עם רופא.","/Health/TeleVisit","doctor_video_call.mp3","פתחי תור וידאו לרופא"),
+        ("measurements_history","C","כאן ניתן לראות היסטוריית מדדים רפואיים ולהשוות בין מדידות.","/Health/Measurements","measurements_history.mp3","פתחי היסטוריית מדדים"),
+        ("pharmacy_contact","C","כאן ניתן לבדוק מלאי תרופות וליצור קשר עם בית מרקחת.","/Health/PharmacyContact","pharmacy_contact.mp3","פתחי קשר עם בית מרקחת")
+    };
 
-            LogAction(pid.Value, "View:Services", $"Level={level}, RecKey={rec.ServiceKey}");
+            // 🔎 פילטור לפי רמה יורשת
+            var availableRobotOptions = robotOptions
+                .Where(x =>
+                    level == "A" ? x.LevelCode == "A" :
+                    level == "B" ? (x.LevelCode == "A" || x.LevelCode == "B") :
+                                   (x.LevelCode == "A" || x.LevelCode == "B" || x.LevelCode == "C"))
+                .ToList();
+
+            // 🚫 לא לחזור פעמיים ברצף
+            var lastRobotKey = HttpContext.Session.GetString("LastRobotServiceKey");
+            var optionsWithoutLast = availableRobotOptions.Where(x => x.Key != lastRobotKey).ToList();
+            if (optionsWithoutLast.Any())
+                availableRobotOptions = optionsWithoutLast;
+
+            var rnd = new Random();
+            var selectedRobot = availableRobotOptions[rnd.Next(availableRobotOptions.Count)];
+
+            HttpContext.Session.SetString("LastRobotServiceKey", selectedRobot.Key);
+
+            // מה שיוצג בדף
+            ViewBag.RobotRecKey = selectedRobot.Key;
+            ViewBag.RobotRecText = selectedRobot.Text;
+            ViewBag.RobotRecUrl = selectedRobot.Url;
+            ViewBag.RobotRecAudio = selectedRobot.AudioFile;
+            ViewBag.RobotRecButtonText = selectedRobot.ButtonText;
+            ViewBag.RobotRecIsQuestion = false;
+
+            LogAction(pid.Value, "View:Services", $"Level={level}, RecKey={selectedRobot.Key}");
+
             return View();
         }
 

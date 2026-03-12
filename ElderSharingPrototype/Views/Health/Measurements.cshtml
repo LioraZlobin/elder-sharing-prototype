@@ -5,8 +5,9 @@
 @{
     ViewData["Title"] = "מדידות אוטומטיות";
 
-    var level = (string)(ViewBag.Level ?? "B"); // B / C (בפועל השירות פתוח ל-B/C בלבד)
-    bool isLevelC = level == "C";
+    var level = (string)(ViewBag.Level ?? "B"); // B / C
+    var measurementsMode = (string)(ViewBag.MeasurementsMode ?? "onetime"); // onetime / history
+    bool isHistoryMode = measurementsMode == "history";
 
     var bloodPressureHistory = (Model ?? new List<VitalMeasurementEntity>())
         .Where(x => x.Kind == "BloodPressure")
@@ -21,11 +22,17 @@
 
 <div class="container py-4 measurements-page" style="max-width: 900px;">
     <h1 class="mb-3">מדידות אוטומטיות (WiFi)</h1>
+    @if (TempData["MeasurementsDeletedOk"] != null)
+{
+    <div class="alert alert-success" style="font-size:18px;">
+        @TempData["MeasurementsDeletedOk"]
+    </div>
+}
 
-    @if (!isLevelC)
+    @if (!isHistoryMode)
     {
         <div class="alert alert-warning" style="font-size:18px;">
-            <strong>רמה 2 – תצוגה חד־פעמית:</strong>
+            <strong>תצוגה חד־פעמית:</strong>
             המדדים נטענים אוטומטית מהמכשירים דרך WiFi ומוצגים על המסך בלבד.
             <br />
             <u>המדדים לא נשמרים</u> ואינם מופיעים בהיסטוריה.
@@ -34,12 +41,12 @@
     else
     {
         <div class="alert alert-info" style="font-size:18px;">
-            <strong>רמה 3 – שמירה מלאה:</strong>
+            <strong>שמירה מלאה:</strong>
             המדדים נטענים אוטומטית מהמכשירים דרך WiFi, נשמרים במסד הנתונים ומוצגים בהיסטוריה.
         </div>
     }
 
-    <!-- ✅ כרטיס "מכשירים מחוברים" + קריאה אוטומטית -->
+    <!-- כרטיס "מכשירים מחוברים" + קריאה אוטומטית -->
     <div class="card p-3 mb-3" style="border-radius:16px;">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
             <div>
@@ -83,7 +90,7 @@
                 <div id="autoReadBar" class="progress-bar progress-bar-striped progress-bar-animated" style="width:0%"></div>
             </div>
 
-            @if (!isLevelC)
+            @if (!isHistoryMode)
             {
                 <div class="mt-3"
                      style="
@@ -95,7 +102,6 @@
                     תצוגת מדידה חד־פעמית (לא נשמרת)
                 </div>
             }
-
 
             <div id="autoReadResult"
                  class="mt-3 p-3"
@@ -110,23 +116,30 @@
                  ">
             </div>
 
-
-            <!-- ✅ ברמה 2: הסבר שזה חד פעמי -->
-            @if (!isLevelC)
+            @if (!isHistoryMode)
             {
                 <div class="mt-2" style="font-size:14px; color:#6b7280;">
-                    * ברמה 2 הנתונים מוצגים כאן בלבד ולא נשמרים.
+                    * במצב זה הנתונים מוצגים כאן בלבד ולא נשמרים.
                 </div>
             }
         </div>
     </div>
 
-    <!-- ✅ היסטוריה רק ברמה 3 -->
-    @if (isLevelC)
+    <!-- היסטוריה רק במצב history -->
+    @if (isHistoryMode)
     {
-        <hr class="my-4" />
+            <hr class="my-4" />
 
-        <h2 class="h4 mb-3">היסטוריית מדידות (נשמר במסד נתונים)</h2>
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+        <h2 class="h4 mb-0">היסטוריית מדידות (נשמר במסד נתונים)</h2>
+
+        <form method="post" action="/Health/DeleteMeasurementsHistory" class="m-0"
+              onsubmit="return confirm('האם למחוק את כל היסטוריית המדדים?');">
+            <button type="submit" class="btn btn-outline-danger">
+                מחיקת היסטוריית מדדים
+            </button>
+        </form>
+    </div>
 
         <div class="row g-3">
             <!-- שמאל: לחץ דם -->
@@ -200,7 +213,8 @@
 
 @section Scripts {
     <script>
-        const level = "@level"; // "B" / "C"
+        const level = "@level";
+        const measurementsMode = "@measurementsMode"; // onetime / history
 
         const btnAutoRead = document.getElementById("btnAutoRead");
         const btnAutoReadHigh = document.getElementById("btnAutoReadHigh");
@@ -241,8 +255,7 @@
             }
 
             try {
-                // ✅ השרת מחליט אם לשמור DB לפי הרמה (B: לא, C: כן)
-                const resp = await fetch("/Health/PullDeviceMeasurements?scenario=" + encodeURIComponent(scenario), {
+                const resp = await fetch("/Health/PullDeviceMeasurements?scenario=" + encodeURIComponent(scenario) + "&mode=" + encodeURIComponent(measurementsMode), {
                     method: "POST"
                 });
 
@@ -258,11 +271,10 @@
                     `סוכר: ${data.sugar.mgDl} mg/dL | ` +
                     `שעה: ${data.measuredAt}`;
 
-                // ✅ ברמה 3 נרענן כדי לראות היסטוריה מתעדכנת
-                if (level === "C") {
+                // רק במצב history מרעננים כדי לראות היסטוריה מתעדכנת
+                if (measurementsMode === "history") {
                     setTimeout(() => location.reload(), 900);
                 } else {
-                    // ברמה 2 נשאיר תצוגה חד-פעמית בלי רענון
                     btnAutoRead.disabled = false;
                     btnAutoReadHigh.disabled = false;
                     running = false;

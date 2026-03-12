@@ -1,16 +1,15 @@
-﻿@model ElderSharingPrototype.Models.Health.EmergencyContactViewModel
+﻿@model ElderSharingPrototype.Models.Health.EmergencyContactTextViewModel
 @{
-    ViewData["Title"] = "פרטי איש קשר לחירום";
+    ViewData["Title"] = "איש קשר והודעת חירום";
 }
 
-<div class="container py-4" style="max-width: 900px;">
-    <h1 class="mb-3">פרטי איש קשר לחירום</h1>
+<div class="container py-4" style="max-width: 950px;">
+    <h1 class="mb-3">איש קשר והודעת חירום</h1>
 
     <div class="alert alert-info" style="font-size:18px;">
-        ברמה B או C ניתן לשמור ולהציג פרטי איש קשר במקרה חירום.
+        ברמה 2 ומעלה ניתן לשמור פרטי איש קשר לחירום, ולהכין או לשלוח הודעת טקסט במקרה חירום.
     </div>
 
-    @* הודעה אחרי שמירה *@
     @if (TempData["SavedOk"] != null)
     {
         <div class="alert alert-success" style="font-size:18px;">
@@ -18,72 +17,80 @@
         </div>
     }
 
-    @* הודעה כללית מהמודל אם קיימת *@
-    @if (!string.IsNullOrWhiteSpace(Model.Message))
+    @if (TempData["MsgOk"] != null)
     {
         <div class="alert alert-success" style="font-size:18px;">
-            @Model.Message
+            @TempData["MsgOk"]
         </div>
     }
 
-    <div class="card p-3 mb-4">
-        <h2 class="h5 mb-3">פרטים שמורים</h2>
-
-        @if (string.IsNullOrWhiteSpace(Model.FullName) && string.IsNullOrWhiteSpace(Model.PhoneNumber))
-        {
-            <div class="text-muted" style="font-size:18px;">אין עדיין איש קשר שמור.</div>
-        }
-        else
-        {
-            <div style="font-size:18px;">
-                <div><strong>שם:</strong> @Model.FullName</div>
-                <div><strong>טלפון:</strong> @Model.PhoneNumber</div>
-
-                @if (!string.IsNullOrWhiteSpace(Model.Relationship))
-                {
-                    <div><strong>קשר:</strong> @Model.Relationship</div>
-                }
-            </div>
-        }
-    </div>
-
-    @* חשוב: שולחים ל-Action EmergencyContact (POST) *@
-    <form asp-action="EmergencyContact" asp-controller="Health" method="post" class="card p-3">
-        <h2 class="h5 mb-3">עדכון איש קשר</h2>
+    <form asp-action="EmergencyContact" asp-controller="Health" method="post" class="card p-3 mb-4 shadow-sm">
+        <h2 class="h4 mb-3">פרטי איש קשר לחירום</h2>
 
         <div class="row g-3">
             <div class="col-12 col-md-6">
-                <label asp-for="FullName" class="form-label" style="font-size:18px;">שם</label>
+                <label asp-for="FullName" class="form-label" style="font-size:18px;"></label>
                 <input asp-for="FullName" class="form-control form-control-lg" />
                 <span asp-validation-for="FullName" class="text-danger"></span>
             </div>
 
             <div class="col-12 col-md-6">
-                <label asp-for="PhoneNumber" class="form-label" style="font-size:18px;">טלפון</label>
+                <label asp-for="PhoneNumber" class="form-label" style="font-size:18px;"></label>
                 <input asp-for="PhoneNumber" class="form-control form-control-lg" />
                 <span asp-validation-for="PhoneNumber" class="text-danger"></span>
             </div>
 
             <div class="col-12 col-md-6">
-                <label asp-for="Relationship" class="form-label" style="font-size:18px;">מה הקשר אלייך?</label>
+                <label asp-for="Relationship" class="form-label" style="font-size:18px;"></label>
                 <input asp-for="Relationship" class="form-control form-control-lg" placeholder="בן/בת זוג, ילד/ה, מטפל/ת..." />
                 <span asp-validation-for="Relationship" class="text-danger"></span>
             </div>
-
-            <div class="col-12">
-                <label asp-for="Message" class="form-label" style="font-size:18px;">הודעה קבועה (אופציונלי)</label>
-                <textarea asp-for="Message" rows="3" class="form-control form-control-lg"
-                          placeholder="לדוגמה: במקרה חירום, אנא צור/י קשר איתי..."></textarea>
-                <span asp-validation-for="Message" class="text-danger"></span>
-            </div>
         </div>
 
-        <button class="btn btn-primary btn-lg mt-3" type="submit">שמור</button>
+        <button class="btn btn-primary btn-lg mt-3" type="submit">שמור פרטי איש קשר</button>
     </form>
 
-    <div class="mt-4">
-        <a class="btn btn-link" href="/Prototype/Services">חזרה לשירותים</a>
-    </div>
+    <form asp-action="SendEmergencyText" asp-controller="Health" method="post" class="card p-3 shadow-sm">
+        <h2 class="h4 mb-3">שליחת הודעת חירום</h2>
+
+        <div class="row g-3">
+            <div class="col-12 col-md-6">
+                <label asp-for="FullName" class="form-label" style="font-size:18px;">שם איש הקשר</label>
+                <input asp-for="FullName" class="form-control form-control-lg" />
+                <span asp-validation-for="FullName" class="text-danger"></span>
+            </div>
+
+            <div class="col-12 col-md-6">
+                <label asp-for="PhoneNumber" class="form-label" style="font-size:18px;">טלפון איש הקשר</label>
+                <input asp-for="PhoneNumber" class="form-control form-control-lg" />
+                <span asp-validation-for="PhoneNumber" class="text-danger"></span>
+            </div>
+
+            <div class="col-12">
+                <label asp-for="Address" class="form-label" style="font-size:18px;">כתובת / מיקום</label>
+                <input asp-for="Address" class="form-control form-control-lg" placeholder="כתובת נוכחית / מיקום" />
+                <span asp-validation-for="Address" class="text-danger"></span>
+            </div>
+
+            <div class="col-12">
+                <label asp-for="MessageText" class="form-label" style="font-size:18px;">בחרי הודעת חירום מוכנה</label>
+                <select asp-for="MessageText" class="form-select form-select-lg">
+                    <option value="">בחרי הודעה</option>
+                    <option value="מקרה חירום, אנא צרו איתי קשר בהקדם.">מקרה חירום, אנא צרו איתי קשר בהקדם.</option>
+                    <option value="אני זקוקה לעזרה דחופה, אנא התקשרו אליי.">אני זקוקה לעזרה דחופה, אנא התקשרו אליי.</option>
+                    <option value="אני לא מרגישה טוב, בבקשה צרו איתי קשר בהקדם האפשרי.">אני לא מרגישה טוב, בבקשה צרו איתי קשר בהקדם האפשרי.</option>
+                    <option value="אני צריכה עזרה מיידית בכתובת שציינתי.">אני צריכה עזרה מיידית בכתובת שציינתי.</option>
+                    <option value="נא ליצור איתי קשר בדחיפות.">נא ליצור איתי קשר בדחיפות.</option>
+                </select>
+                <span asp-validation-for="MessageText" class="text-danger"></span>
+            </div>
+
+            <div class="col-12 d-flex gap-2">
+                <button type="submit" class="btn btn-danger btn-lg">שלח הודעה</button>
+                <a class="btn btn-outline-secondary btn-lg" href="/Prototype/Services">חזרה לשירותים</a>
+            </div>
+        </div>
+    </form>
 </div>
 
 @section Scripts {

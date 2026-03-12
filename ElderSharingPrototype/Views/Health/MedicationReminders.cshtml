@@ -1,107 +1,179 @@
-﻿@model List<ElderSharingPrototype.Models.Health.ReminderItem>
+﻿@model ElderSharingPrototype.Models.Health.MedicationCenterViewModel
 @{
-    ViewData["Title"] = "תזכורות תרופות";
-    var level = (string)(ViewBag.Level ?? "A");
-    bool detailed = (level == "B" || level == "C");
+    ViewData["Title"] = "ניהול תרופות ותזכורות";
 
-    var userMeds = ViewBag.UserMeds as List<string> ?? new List<string>();
+    var myMeds = Model?.MedicationList ?? new List<string>();
+    var catalog = Model?.MedicationCatalog ?? new List<string>();
+    var reminders = Model?.Reminders ?? new List<ElderSharingPrototype.Models.Health.ReminderItem>();
 }
 
-<div class="container py-4" style="max-width: 900px;">
-    <h1 class="mb-3">תזכורות תרופות</h1>
+<div class="container py-4" style="max-width: 1000px;">
+    <h1 class="mb-3">ניהול תרופות ותזכורות</h1>
 
     <div class="alert alert-info" style="font-size:18px;">
-        איננו שומרים מידע מעבר לנדרש. הנתונים נשארים במכשיר.
+        איננו שומרים מידע מעבר לנדרש.
         <br />
-        @if (!detailed)
+        ברמה 2 ומעלה ניתן לנהל רשימת תרופות קבועות ולהוסיף תזכורות לפי שם התרופה.
+    </div>
+
+    @if (TempData["MedListError"] != null)
+    {
+        <div class="alert alert-danger" style="font-size:18px;">
+            @TempData["MedListError"]
+        </div>
+    }
+
+    @if (TempData["ReminderError"] != null)
+    {
+        <div class="alert alert-danger" style="font-size:18px;">
+            @TempData["ReminderError"]
+        </div>
+    }
+
+    <div class="card p-3 mb-4 shadow-sm">
+        <h2 class="h4 mb-3">ניהול רשימת התרופות שלי</h2>
+
+        <form method="post" action="/Health/AddMedicationToList" class="row g-3">
+            <input type="hidden" name="mode" value="detailed" />
+
+            <div class="col-12 col-md-8">
+                <label class="form-label" style="font-size:18px;">בחרי תרופה מהקטלוג</label>
+
+                <select name="name" class="form-select form-select-lg" id="medCatalogSelect">
+                    <option></option>
+                    @foreach (var m in catalog)
+                    {
+                        <option value="@m">@m</option>
+                    }
+                </select>
+
+                <div class="form-text" style="font-size:16px;">
+                    התחילי להקליד כדי לצמצם את הרשימה.
+                </div>
+            </div>
+
+            <div class="col-12 col-md-4 d-flex align-items-end">
+                <button class="btn btn-primary btn-lg w-100" type="submit">הוסף תרופה</button>
+            </div>
+        </form>
+
+        <hr class="my-4" />
+
+        <h3 class="h5 mb-3">רשימת התרופות שלי</h3>
+
+        @if (myMeds == null || !myMeds.Any())
         {
-            <span>ברמה 1 התזכורת היא כללית (ללא שם תרופה).</span>
+            <div class="text-muted" style="font-size:18px;">אין עדיין תרופות שמורות ברשימה שלך.</div>
         }
         else
         {
-            <span>ברמה 2 ומעלה ניתן להוסיף תזכורת עם שם התרופה מתוך הרשימה שסימנת בהרשמה.</span>
+            <div class="list-group">
+                @foreach (var med in myMeds.OrderBy(x => x))
+                {
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div style="font-size:18px;">
+                            <strong>@med</strong>
+                        </div>
+
+                        <form method="post" action="/Health/RemoveMedicationFromList" class="m-0">
+                            <input type="hidden" name="name" value="@med" />
+                            <input type="hidden" name="mode" value="detailed" />
+                            <button class="btn btn-outline-danger">מחק</button>
+                        </form>
+                    </div>
+                }
+            </div>
         }
     </div>
 
-    <form method="post" action="/Health/AddMedicationReminder" class="card p-3 mb-4">
-        <div class="row g-3">
+    <div class="card p-3 mb-4 shadow-sm">
+        <h2 class="h4 mb-3">הוספת תזכורת לתרופה</h2>
 
-            @if (detailed)
-            {
-                <div class="col-12 col-md-6">
-                    <label class="form-label" style="font-size:18px;">בחר/י תרופה מהרשימה שלך</label>
+        <form method="post" action="/Health/AddMedicationReminder" class="row g-3">
+            <input type="hidden" name="mode" value="detailed" />
 
-                    <select name="medicationName" class="form-select form-select-lg">
-                        <option value="">בחר/י תרופה</option>
-                        @foreach (var m in userMeds)
-                        {
-                            <option value="@m">@m</option>
-                        }
-                    </select>
+            <div class="col-12 col-md-6">
+                <label class="form-label" style="font-size:18px;">בחר/י תרופה מהרשימה שלך</label>
 
-                    <span class="text-danger">@Html.ValidationMessage("medicationName")</span>
+                <select name="medicationName" class="form-select form-select-lg">
+                    <option value="">בחר/י תרופה</option>
+                    @foreach (var m in myMeds)
+                    {
+                        <option value="@m">@m</option>
+                    }
+                </select>
 
-                    <div class="form-text" style="font-size:16px;">
-                        לא מופיעה תרופה? חזרי למסך ההגדרות ועדכני את רשימת התרופות הקבועות.
-                    </div>
+                <div class="form-text" style="font-size:16px;">
+                    לא מופיעה תרופה? הוסיפי אותה קודם ברשימת התרופות למעלה.
                 </div>
-            }
-            else
-            {
-                <div class="col-12 col-md-6">
-                    <label class="form-label" style="font-size:18px;">סוג תזכורת</label>
-                    <input class="form-control form-control-lg" value="תזכורת כללית ללקיחת תרופות" disabled />
-                    <div class="form-text" style="font-size:16px;">
-                        לא נדרש להזין שם תרופה ברמה זו.
-                    </div>
-                </div>
-            }
+            </div>
 
             <div class="col-12 col-md-3">
                 <label class="form-label" style="font-size:18px;">שעה</label>
                 <input name="time" type="time" class="form-control form-control-lg" />
-                <span class="text-danger">@Html.ValidationMessage("time")</span>
             </div>
 
             <div class="col-12 col-md-3">
                 <label class="form-label" style="font-size:18px;">הערה</label>
                 <input name="notes" class="form-control form-control-lg" placeholder="אופציונלי" />
             </div>
-        </div>
 
-        <button class="btn btn-primary btn-lg mt-3" type="submit">הוסף תזכורת</button>
-    </form>
+            <div class="col-12">
+                <button class="btn btn-primary btn-lg" type="submit">הוסף תזכורת</button>
+            </div>
+        </form>
+    </div>
 
-    <h2 class="h4 mb-2">הרשימה שלי</h2>
+    <div class="card p-3 shadow-sm">
+        <h2 class="h4 mb-3">התזכורות שלי</h2>
 
-    @if (Model == null || !Model.Any())
-    {
-        <div class="text-muted" style="font-size:18px;">אין עדיין תזכורות.</div>
-    }
-    else
-    {
-        <div class="list-group">
-            @foreach (var r in Model)
-            {
-                <div class="list-group-item d-flex justify-content-between align-items-center">
-                    <div style="font-size:18px;">
-                        <strong>@r.Title</strong> — @r.Time
-                        @if (!string.IsNullOrWhiteSpace(r.Notes))
-                        {
-                            <div class="text-muted">@r.Notes</div>
-                        }
+        @if (reminders == null || !reminders.Any())
+        {
+            <div class="text-muted" style="font-size:18px;">אין עדיין תזכורות.</div>
+        }
+        else
+        {
+            <div class="list-group">
+                @foreach (var r in reminders)
+                {
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div style="font-size:18px;">
+                            <strong>@r.Title</strong> — @r.Time
+                            @if (!string.IsNullOrWhiteSpace(r.Notes))
+                            {
+                                <div class="text-muted">@r.Notes</div>
+                            }
+                        </div>
+
+                        <form method="post" action="/Health/DeleteMedicationReminder" class="m-0">
+                            <input type="hidden" name="id" value="@r.Id" />
+                            <input type="hidden" name="mode" value="detailed" />
+                            <button class="btn btn-outline-danger">מחק</button>
+                        </form>
                     </div>
-
-                    <form method="post" action="/Health/DeleteMedicationReminder" class="m-0">
-                        <input type="hidden" name="id" value="@r.Id" />
-                        <button class="btn btn-outline-danger">מחק</button>
-                    </form>
-                </div>
-            }
-        </div>
-    }
+                }
+            </div>
+        }
+    </div>
 
     <div class="mt-4">
         <a class="btn btn-link" href="/Prototype/Services">חזרה לשירותים</a>
     </div>
 </div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <script>
+        $(document).ready(function () {
+            $('#medCatalogSelect').select2({
+                placeholder: "בחר/י תרופה מהרשימה",
+                width: '100%',
+                dir: "rtl"
+            });
+        });
+    </script>
+}

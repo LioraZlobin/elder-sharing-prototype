@@ -18,6 +18,7 @@ namespace ElderSharingPrototype.Models.Health
         public string Time { get; set; } = "";
 
         public string? MedicationName { get; set; }
+        public string? MedicationMode { get; set; }
         public string? Notes { get; set; }
 
         public DateTime CreatedAtUtc { get; set; } = DateTime.UtcNow;
