@@ -16,7 +16,7 @@ builder.Services.AddSession(options =>
 
 // EF Core SQL Server
 builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("ElderSharingDb")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("ElderSharingDb")));
 
 var app = builder.Build();
 
