@@ -1067,8 +1067,10 @@ public IHtmlContent RenderServiceBox(ServiceItemVm service, bool allowed, string
         ? $"<div class='service-item-desc'>{service.Desc}</div>"
         : "";
 
+    var trackedHref = $"/Prototype/OpenService?serviceKey={Uri.EscapeDataString(service.Href)}&serviceTitle={Uri.EscapeDataString(service.Title)}&returnUrl={Uri.EscapeDataString(service.Href)}";
+
     var actionHtml = allowed
-        ? $"<a class='btn btn-primary w-100 btn-lg' style='{btnStyleInline}' href='{service.Href}'>פתח שירות</a>"
+        ? $"<a class='btn btn-primary w-100 btn-lg' style='{btnStyleInline}' href='{trackedHref}'>פתח שירות</a>"
         : $"<button type='button' class='btn btn-outline-secondary w-100 btn-lg' style='{btnStyleInline}' onclick=\"openUpgradeModal('{service.Title}')\">שירות חסום</button>";
 
     var html = $@"

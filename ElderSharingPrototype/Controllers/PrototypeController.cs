@@ -69,6 +69,48 @@ namespace ElderSharingPrototype.Controllers
                 HttpContext.Session.SetString("SharingLevel", MapPrivacyLevelToSharingLevel(p.CurrentPrivacyLevel.Value));
         }
 
+        [HttpGet]
+        public IActionResult OpenService(string serviceKey, string serviceTitle, string returnUrl)
+        {
+            var pid = GetParticipantId();
+            if (pid == null)
+                return RedirectToAction("Login", "Experiment");
+
+            // שמירה למסד
+            _db.ServiceClickLogs.Add(new ServiceClickLog
+            {
+                ParticipantId = pid.Value,
+                ServiceKey = serviceKey,
+                ServiceTitle = serviceTitle,
+                ClickedAtUtc = DateTime.UtcNow
+            });
+
+            _db.SaveChanges();
+
+            // מעבר לשירות האמיתי
+            return Redirect(returnUrl);
+        }
+
+        [HttpPost]
+        public IActionResult LogServiceClick(string serviceKey, string serviceTitle, string redirectUrl)
+        {
+            var pid = GetParticipantId();
+            if (pid == null)
+                return RedirectToAction("Login", "Experiment");
+
+            _db.ServiceClickLogs.Add(new ServiceClickLog
+            {
+                ParticipantId = pid.Value,
+                ServiceKey = serviceKey,
+                ServiceTitle = serviceTitle,
+                ClickedAtUtc = DateTime.UtcNow
+            });
+
+            _db.SaveChanges();
+
+            return Redirect(redirectUrl);
+        }
+
         private static List<string> GetMedicationCatalog()
         {
             return new List<string>

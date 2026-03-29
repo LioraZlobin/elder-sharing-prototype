@@ -11,6 +11,7 @@ public class AppDbContext : DbContext
     public DbSet<Participant> Participants => Set<Participant>();
     public DbSet<ParticipantSession> ParticipantSessions => Set<ParticipantSession>();
     public DbSet<InteractionLog> InteractionLogs => Set<InteractionLog>();
+    public DbSet<ServiceClickLog> ServiceClickLogs { get; set; }
     public DbSet<VitalMeasurementEntity> VitalMeasurements => Set<VitalMeasurementEntity>();
     public DbSet<ReminderItemEntity> ReminderItems => Set<ReminderItemEntity>();
     public DbSet<AppointmentRequestEntity> AppointmentRequests => Set<AppointmentRequestEntity>();
