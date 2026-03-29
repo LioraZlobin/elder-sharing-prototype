@@ -243,32 +243,39 @@ namespace ElderSharingPrototype.Controllers
             ViewBag.HmoList = new List<string> { "כללית", "מכבי", "מאוחדת", "לאומית" };
 
             // -------- Validations --------
-            // A: אין מה למלא
             if (level == "B" || level == "C")
             {
                 var pidNum = (model.PersonalIdNumber ?? "").Trim();
-                if (pidNum.Length != 9 || !pidNum.All(char.IsDigit))
+                if (string.IsNullOrWhiteSpace(pidNum))
+                    ModelState.AddModelError(nameof(model.PersonalIdNumber), "נא להזין תעודת זהות.");
+                else if (pidNum.Length != 9 || !pidNum.All(char.IsDigit))
                     ModelState.AddModelError(nameof(model.PersonalIdNumber), "נא להזין תעודת זהות תקינה (9 ספרות).");
 
                 if (string.IsNullOrWhiteSpace(model.Hmo))
                     ModelState.AddModelError(nameof(model.Hmo), "נא לבחור קופת חולים.");
 
-                if (string.IsNullOrWhiteSpace(model.Phone1))
+                var phone1 = (model.Phone1 ?? "").Trim();
+                if (string.IsNullOrWhiteSpace(phone1))
                     ModelState.AddModelError(nameof(model.Phone1), "נא להזין מספר טלפון.");
+                else if (phone1.Length < 9 || phone1.Length > 10 || !phone1.All(char.IsDigit) || !phone1.StartsWith("0"))
+                    ModelState.AddModelError(nameof(model.Phone1), "נא להזין מספר טלפון תקין.");
 
-                // אם את רוצה לחייב תרופות ברמה B/C השאירי את זה.
-                // אם לא – תמחקי את הבלוק הבא.
+                var phone2 = (model.Phone2 ?? "").Trim();
+                if (!string.IsNullOrWhiteSpace(phone2))
+                {
+                    if (phone2.Length < 9 || phone2.Length > 10 || !phone2.All(char.IsDigit) || !phone2.StartsWith("0"))
+                        ModelState.AddModelError(nameof(model.Phone2), "נא להזין מספר טלפון נוסף תקין.");
+                }
+
                 if (model.SelectedMedications == null || !model.SelectedMedications.Any())
                     ModelState.AddModelError(nameof(model.SelectedMedications), "נא לבחור לפחות תרופה אחת מהרשימה.");
-
-                // ❗ חשוב: לא מחייבים כאן איש קשר לחירום כי המסך הזה לא כולל שדות לזה
-                // Emergency Contact נשמר/מוזן במסך /Health/EmergencyContact
             }
 
             if (level == "C")
             {
                 if (!model.MicConsent)
                     ModelState.AddModelError(nameof(model.MicConsent), "כדי להשתמש בשירותי רמה 3 יש לאשר הפעלת מיקרופון.");
+
                 if (!model.CameraConsent)
                     ModelState.AddModelError(nameof(model.CameraConsent), "כדי להשתמש בשירותי רמה 3 יש לאשר הפעלת מצלמה.");
             }
@@ -279,7 +286,6 @@ namespace ElderSharingPrototype.Controllers
             // -------- Save to Session --------
             if (level == "A")
             {
-                // אין פרטים לשמור
                 HttpContext.Session.SetString("MicConsent", "false");
                 HttpContext.Session.SetString("CameraConsent", "false");
             }
@@ -324,8 +330,6 @@ namespace ElderSharingPrototype.Controllers
                     participant.Phone1 = null;
                     participant.Phone2 = null;
                     participant.FixedMedications = null;
-
-                    // לא מוחקים EmergencyContact כאן, כי זה שירות שממולא בנפרד
                     participant.MicConsent = false;
                     participant.CameraConsent = false;
                 }
@@ -352,7 +356,6 @@ namespace ElderSharingPrototype.Controllers
                 _db.SaveChanges();
             }
 
-            // ✅ מעבר חד משמעי לשירותים
             return RedirectToAction("Services", "Prototype");
         }
 

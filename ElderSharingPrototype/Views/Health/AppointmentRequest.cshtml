@@ -13,8 +13,15 @@
     <h1 class="mb-3">זימון תור לרופא</h1>
 
     <div class="alert alert-info" style="font-size:18px;">
-        איננו שומרים מידע מעבר לנדרש. הנתונים נשארים במכשיר.
+        כאן ניתן לשלוח בקשת תור לרופא.
     </div>
+
+    @if (TempData["AppointmentOk"] != null)
+    {
+        <div class="alert alert-success" style="font-size:18px;">
+            @TempData["AppointmentOk"]
+        </div>
+    }
 
     <form method="post" action="/Health/AddAppointment" class="card p-3 mb-4">
         <h2 class="h5 mb-3">בקשת תור</h2>
@@ -30,25 +37,39 @@
                         <option value="@a">@a</option>
                     }
                 </select>
-                <span class="text-danger">@Html.ValidationMessage("treatmentArea")</span>
+                @if (TempData["AppointmentTreatmentAreaError"] != null)
+                {
+                    <span class="text-danger d-block mt-1">@TempData["AppointmentTreatmentAreaError"]</span>
+                }
             </div>
 
             <div class="col-12 col-md-6">
-                <label class="form-label" style="font-size:18px;">סיבה לפנייה</label>
+                <label class="form-label" style="font-size:18px;">סיבה לפנייה (אופציונלי)</label>
                 <input name="reason" class="form-control form-control-lg" placeholder="למשל: כאבי ראש, בדיקה שגרתית..." />
-                <span class="text-danger">@Html.ValidationMessage("reason")</span>
             </div>
 
             <div class="col-12 col-md-6">
                 <label class="form-label" style="font-size:18px;">תאריך מועדף</label>
-                <input name="preferredDate" type="date" class="form-control form-control-lg" />
-                <span class="text-danger">@Html.ValidationMessage("preferredDate")</span>
+                <input id="preferredDate"
+                       name="preferredDate"
+                       type="date"
+                       class="form-control form-control-lg" />
+                @if (TempData["AppointmentPreferredDateError"] != null)
+                {
+                    <span class="text-danger d-block mt-1">@TempData["AppointmentPreferredDateError"]</span>
+                }
             </div>
 
             <div class="col-12 col-md-6">
                 <label class="form-label" style="font-size:18px;">שעה מועדפת</label>
-                <input name="preferredTime" type="time" class="form-control form-control-lg" />
-                <span class="text-danger">@Html.ValidationMessage("preferredTime")</span>
+                <input id="preferredTime"
+                       name="preferredTime"
+                       type="time"
+                       class="form-control form-control-lg" />
+                @if (TempData["AppointmentPreferredTimeError"] != null)
+                {
+                    <span class="text-danger d-block mt-1">@TempData["AppointmentPreferredTimeError"]</span>
+                }
             </div>
 
             <div class="col-12">
@@ -71,11 +92,22 @@
         <div class="list-group">
             @foreach (var r in requests)
             {
+                var preferredDateText = r.PreferredDate;
+                if (DateTime.TryParse(r.PreferredDate, out var parsedPreferredDate))
+                {
+                    preferredDateText = parsedPreferredDate.ToString("dd/MM/yyyy");
+                }
+
                 <div class="list-group-item d-flex justify-content-between align-items-center">
                     <div style="font-size:18px;">
-                        <strong>@r.TreatmentArea</strong> • @r.Reason
+                        <strong>@r.TreatmentArea</strong>
+                        @if (!string.IsNullOrWhiteSpace(r.Reason))
+                        {
+                            <span> • @r.Reason</span>
+                        }
+
                         <div class="text-muted">
-                            @r.PreferredDate @r.PreferredTime
+                            @preferredDateText @r.PreferredTime
                             • נוצר: @r.CreatedAt.ToString("dd/MM/yyyy HH:mm")
                         </div>
 
@@ -98,3 +130,51 @@
         <a class="btn btn-link" href="/Prototype/Services">חזרה לשירותים</a>
     </div>
 </div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const dateInput = document.getElementById("preferredDate");
+            const timeInput = document.getElementById("preferredTime");
+
+            if (!dateInput || !timeInput) return;
+
+            function getIsraelNowParts() {
+                const now = new Date();
+                const parts = new Intl.DateTimeFormat('sv-SE', {
+                    timeZone: 'Asia/Jerusalem',
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    hourCycle: 'h23'
+                }).formatToParts(now);
+
+                const map = {};
+                parts.forEach(p => {
+                    if (p.type !== "literal") map[p.type] = p.value;
+                });
+
+                return {
+                    date: `${map.year}-${map.month}-${map.day}`,
+                    time: `${map.hour}:${map.minute}`
+                };
+            }
+
+            function applyMinValues() {
+                const israelNow = getIsraelNowParts();
+                dateInput.min = israelNow.date;
+
+                if (dateInput.value === israelNow.date) {
+                    timeInput.min = israelNow.time;
+                } else {
+                    timeInput.removeAttribute("min");
+                }
+            }
+
+            applyMinValues();
+            dateInput.addEventListener("change", applyMinValues);
+        })();
+    </script>
+}

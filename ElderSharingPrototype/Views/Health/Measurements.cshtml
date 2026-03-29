@@ -1,4 +1,5 @@
 ﻿@using System.Linq
+@using ElderSharingPrototype.Models
 @using ElderSharingPrototype.Models.Health
 @model List<VitalMeasurementEntity>
 
@@ -8,6 +9,9 @@
     var level = (string)(ViewBag.Level ?? "B"); // B / C
     var measurementsMode = (string)(ViewBag.MeasurementsMode ?? "onetime"); // onetime / history
     bool isHistoryMode = measurementsMode == "history";
+
+    var uiAdaptation = (UiAdaptation)(ViewBag.UiAdaptation ?? (int)UiAdaptation.NotAdapted);
+    bool isAdapted = uiAdaptation == UiAdaptation.Adapted;
 
     var bloodPressureHistory = (Model ?? new List<VitalMeasurementEntity>())
         .Where(x => x.Kind == "BloodPressure")
@@ -22,12 +26,13 @@
 
 <div class="container py-4 measurements-page" style="max-width: 900px;">
     <h1 class="mb-3">מדידות אוטומטיות (WiFi)</h1>
+
     @if (TempData["MeasurementsDeletedOk"] != null)
-{
-    <div class="alert alert-success" style="font-size:18px;">
-        @TempData["MeasurementsDeletedOk"]
-    </div>
-}
+    {
+        <div class="alert alert-success" style="font-size:18px;">
+            @TempData["MeasurementsDeletedOk"]
+        </div>
+    }
 
     @if (!isHistoryMode)
     {
@@ -46,7 +51,6 @@
         </div>
     }
 
-    <!-- כרטיס "מכשירים מחוברים" + קריאה אוטומטית -->
     <div class="card p-3 mb-3" style="border-radius:16px;">
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
             <div>
@@ -57,10 +61,6 @@
             <div class="d-flex gap-2 flex-wrap">
                 <button id="btnAutoRead" type="button" class="btn btn-success btn-lg">
                     📶 התחל קריאה אוטומטית (דמו)
-                </button>
-
-                <button id="btnAutoReadHigh" type="button" class="btn btn-outline-danger btn-lg">
-                    ⚠️ סימולציית חריגה (דמו)
                 </button>
             </div>
         </div>
@@ -82,7 +82,6 @@
             </div>
         </div>
 
-        <!-- אזור טעינה -->
         <div id="autoReadPanel" class="mt-3" style="display:none;">
             <div id="autoReadStep" style="font-size:18px; font-weight:700;">מתחיל קריאה...</div>
 
@@ -93,27 +92,14 @@
             @if (!isHistoryMode)
             {
                 <div class="mt-3"
-                     style="
-                        font-size:20px;
-                        font-weight:800;
-                        color:#92400e;
-                        text-align:center;
-                     ">
+                     style="font-size:20px; font-weight:800; color:#92400e; text-align:center;">
                     תצוגת מדידה חד־פעמית (לא נשמרת)
                 </div>
             }
 
             <div id="autoReadResult"
                  class="mt-3 p-3"
-                 style="
-                    font-size:22px;
-                    font-weight:700;
-                    border-radius:14px;
-                    background:#f8fafc;
-                    border:2px dashed #94a3b8;
-                    color:#0f172a;
-                    text-align:center;
-                 ">
+                 style="font-size:22px; font-weight:700; border-radius:14px; background:#f8fafc; border:2px dashed #94a3b8; color:#0f172a; text-align:center;">
             </div>
 
             @if (!isHistoryMode)
@@ -125,24 +111,22 @@
         </div>
     </div>
 
-    <!-- היסטוריה רק במצב history -->
     @if (isHistoryMode)
     {
-            <hr class="my-4" />
+        <hr class="my-4" />
 
-    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-        <h2 class="h4 mb-0">היסטוריית מדידות (נשמר במסד נתונים)</h2>
+        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+            <h2 class="h4 mb-0">היסטוריית מדידות (נשמר במסד נתונים)</h2>
 
-        <form method="post" action="/Health/DeleteMeasurementsHistory" class="m-0"
-              onsubmit="return confirm('האם למחוק את כל היסטוריית המדדים?');">
-            <button type="submit" class="btn btn-outline-danger">
-                מחיקת היסטוריית מדדים
-            </button>
-        </form>
-    </div>
+            <form method="post" action="/Health/DeleteMeasurementsHistory" class="m-0"
+                  onsubmit="return confirm('האם למחוק את כל היסטוריית המדדים?');">
+                <button type="submit" class="btn btn-outline-danger">
+                    מחיקת היסטוריית מדדים
+                </button>
+            </form>
+        </div>
 
         <div class="row g-3">
-            <!-- שמאל: לחץ דם -->
             <div class="col-12 col-md-6">
                 <div class="card p-3 h-100" style="border-radius:16px;">
                     <h3 class="h5 mb-3">לחץ דם</h3>
@@ -156,15 +140,24 @@
                         <div class="list-group">
                             @foreach (var m in bloodPressureHistory)
                             {
-                                <div class="list-group-item">
+                                var bpStatus = GetBloodPressureStatus(m.Systolic, m.Diastolic);
+                                var bpStyle = isAdapted
+                                    ? GetStatusCardStyle(bpStatus)
+                                    : "background:#ffffff; border:1px solid #dee2e6; color:#212529;";
+
+                                <div class="list-group-item" style="border-radius:14px; margin-bottom:10px; @bpStyle">
                                     <div style="font-size:18px;">
                                         <strong>@($"{m.Systolic}/{m.Diastolic}")</strong>
-                                        <span class="text-muted"> – @m.MeasuredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                                        <span> – @m.MeasuredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                                    </div>
+
+                                    <div style="font-size:16px; font-weight:700; margin-top:6px;">
+                                        מצב: @bpStatus
                                     </div>
 
                                     @if (!string.IsNullOrWhiteSpace(m.Notes))
                                     {
-                                        <div class="text-muted">@m.Notes</div>
+                                        <div style="margin-top:6px;">@m.Notes</div>
                                     }
                                 </div>
                             }
@@ -173,7 +166,6 @@
                 </div>
             </div>
 
-            <!-- ימין: סוכר -->
             <div class="col-12 col-md-6">
                 <div class="card p-3 h-100" style="border-radius:16px;">
                     <h3 class="h5 mb-3">סוכר</h3>
@@ -187,15 +179,24 @@
                         <div class="list-group">
                             @foreach (var m in sugarHistory)
                             {
-                                <div class="list-group-item">
+                                var sugarStatus = GetSugarStatus(m.SugarMgDl);
+                                var sugarStyle = isAdapted
+                                    ? GetStatusCardStyle(sugarStatus)
+                                    : "background:#ffffff; border:1px solid #dee2e6; color:#212529;";
+
+                                <div class="list-group-item" style="border-radius:14px; margin-bottom:10px; @sugarStyle">
                                     <div style="font-size:18px;">
-                                        <strong>@m.SugarMgDl</strong> <span class="text-muted">mg/dL</span>
-                                        <span class="text-muted"> – @m.MeasuredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                                        <strong>@m.SugarMgDl</strong> <span>mg/dL</span>
+                                        <span> – @m.MeasuredAt.ToLocalTime().ToString("dd/MM/yyyy HH:mm")</span>
+                                    </div>
+
+                                    <div style="font-size:16px; font-weight:700; margin-top:6px;">
+                                        מצב: @sugarStatus
                                     </div>
 
                                     @if (!string.IsNullOrWhiteSpace(m.Notes))
                                     {
-                                        <div class="text-muted">@m.Notes</div>
+                                        <div style="margin-top:6px;">@m.Notes</div>
                                     }
                                 </div>
                             }
@@ -213,12 +214,10 @@
 
 @section Scripts {
     <script>
-        const level = "@level";
-        const measurementsMode = "@measurementsMode"; // onetime / history
+        const measurementsMode = "@measurementsMode";
+        const isAdapted = @(isAdapted ? "true" : "false");
 
         const btnAutoRead = document.getElementById("btnAutoRead");
-        const btnAutoReadHigh = document.getElementById("btnAutoReadHigh");
-
         const panel = document.getElementById("autoReadPanel");
         const stepEl = document.getElementById("autoReadStep");
         const bar = document.getElementById("autoReadBar");
@@ -231,15 +230,67 @@
             if (text) stepEl.innerText = text;
         }
 
-        async function startAutoRead(scenario) {
+        function getStatusColors(status) {
+            if (status === "תקין") {
+                return {
+                    bg: "#dcfce7",
+                    border: "#22c55e",
+                    text: "#166534"
+                };
+            }
+
+            if (status === "גבולי") {
+                return {
+                    bg: "#ffedd5",
+                    border: "#f97316",
+                    text: "#9a3412"
+                };
+            }
+
+            return {
+                bg: "#fee2e2",
+                border: "#ef4444",
+                text: "#991b1b"
+            };
+        }
+
+        function playAlertBeep() {
+            try {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContextClass) return;
+
+                const ctx = new AudioContextClass();
+                const oscillator = ctx.createOscillator();
+                const gainNode = ctx.createGain();
+
+                oscillator.type = "sine";
+                oscillator.frequency.setValueAtTime(880, ctx.currentTime);
+
+                gainNode.gain.setValueAtTime(0.001, ctx.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + 0.02);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+
+                oscillator.connect(gainNode);
+                gainNode.connect(ctx.destination);
+
+                oscillator.start();
+                oscillator.stop(ctx.currentTime + 0.35);
+            } catch (e) {
+            }
+        }
+
+        async function startAutoRead() {
             if (running) return;
             running = true;
 
             btnAutoRead.disabled = true;
-            btnAutoReadHigh.disabled = true;
 
             panel.style.display = "block";
-            resultEl.innerText = "";
+            resultEl.innerHTML = "";
+            resultEl.style.background = "#f8fafc";
+            resultEl.style.border = "2px dashed #94a3b8";
+            resultEl.style.color = "#0f172a";
+
             setProgress(0, "מתחיל קריאה מהמכשירים...");
 
             const steps = [
@@ -255,7 +306,7 @@
             }
 
             try {
-                const resp = await fetch("/Health/PullDeviceMeasurements?scenario=" + encodeURIComponent(scenario) + "&mode=" + encodeURIComponent(measurementsMode), {
+                const resp = await fetch("/Health/PullDeviceMeasurements?mode=" + encodeURIComponent(measurementsMode), {
                     method: "POST"
                 });
 
@@ -266,31 +317,108 @@
                 }
 
                 setProgress(100, "המדדים נקלטו בהצלחה ✅");
-                resultEl.innerText =
-                    `לחץ דם: ${data.bloodPressure.systolic}/${data.bloodPressure.diastolic} | ` +
-                    `סוכר: ${data.sugar.mgDl} mg/dL | ` +
-                    `שעה: ${data.measuredAt}`;
 
-                // רק במצב history מרעננים כדי לראות היסטוריה מתעדכנת
+                if (isAdapted) {
+                    const colors = getStatusColors(data.overallStatus);
+                    resultEl.style.background = colors.bg;
+                    resultEl.style.border = "2px solid " + colors.border;
+                    resultEl.style.color = colors.text;
+                } else {
+                    resultEl.style.background = "#f8fafc";
+                    resultEl.style.border = "2px dashed #94a3b8";
+                    resultEl.style.color = "#0f172a";
+                }
+
+                resultEl.innerHTML = `
+                    <div style="font-size:26px; font-weight:800; margin-bottom:10px;">
+                        ${data.overallStatus}
+                    </div>
+
+                    <div style="margin-bottom:8px;">
+                        ${data.overallMessage}
+                    </div>
+
+                    <div style="margin-bottom:8px;">
+                        לחץ דם: <strong>${data.bloodPressure.systolic}/${data.bloodPressure.diastolic}</strong>
+                        <br />
+                        סטטוס לחץ דם: <strong>${data.bloodPressure.status}</strong>
+                    </div>
+
+                    <div style="margin-bottom:8px;">
+                        סוכר: <strong>${data.sugar.mgDl} mg/dL</strong>
+                        <br />
+                        סטטוס סוכר: <strong>${data.sugar.status}</strong>
+                    </div>
+
+                    <div>
+                        שעה: <strong>${data.measuredAt}</strong>
+                    </div>
+                `;
+
+                if (isAdapted && (data.bloodPressure.status === "לא תקין" || data.sugar.status === "לא תקין")) {
+                    playAlertBeep();
+                }
+
                 if (measurementsMode === "history") {
-                    setTimeout(() => location.reload(), 900);
+                    setTimeout(() => location.reload(), 1200);
                 } else {
                     btnAutoRead.disabled = false;
-                    btnAutoReadHigh.disabled = false;
                     running = false;
                 }
 
             } catch (e) {
                 setProgress(100, "לא הצלחנו לקרוא מדדים ❌");
-                resultEl.innerText = "נסי שוב בעוד רגע. (דמו)";
+                resultEl.style.background = "#fee2e2";
+                resultEl.style.border = "2px solid #ef4444";
+                resultEl.style.color = "#991b1b";
+                resultEl.innerHTML = "נסי שוב בעוד רגע. (דמו)";
 
                 btnAutoRead.disabled = false;
-                btnAutoReadHigh.disabled = false;
                 running = false;
             }
         }
 
-        btnAutoRead?.addEventListener("click", () => startAutoRead("normal"));
-        btnAutoReadHigh?.addEventListener("click", () => startAutoRead("high"));
+        btnAutoRead?.addEventListener("click", startAutoRead);
     </script>
+}
+
+@functions {
+    public static string GetBloodPressureStatus(int? systolic, int? diastolic)
+    {
+        if (!systolic.HasValue || !diastolic.HasValue)
+            return "לא ידוע";
+
+        if (systolic.Value >= 140 || diastolic.Value >= 90 || systolic.Value < 90 || diastolic.Value < 60)
+            return "לא תקין";
+
+        if ((systolic.Value >= 130 && systolic.Value <= 139) || (diastolic.Value >= 85 && diastolic.Value <= 89))
+            return "גבולי";
+
+        return "תקין";
+    }
+
+    public static string GetSugarStatus(int? sugar)
+    {
+        if (!sugar.HasValue)
+            return "לא ידוע";
+
+        if (sugar.Value > 180 || sugar.Value < 70)
+            return "לא תקין";
+
+        if ((sugar.Value >= 141 && sugar.Value <= 180) || (sugar.Value >= 70 && sugar.Value <= 79))
+            return "גבולי";
+
+        return "תקין";
+    }
+
+    public static string GetStatusCardStyle(string status)
+    {
+        return status switch
+        {
+            "תקין" => "background:#dcfce7; border:1px solid #22c55e; color:#166534;",
+            "גבולי" => "background:#ffedd5; border:1px solid #f97316; color:#9a3412;",
+            "לא תקין" => "background:#fee2e2; border:1px solid #ef4444; color:#991b1b;",
+            _ => "background:#f8fafc; border:1px solid #cbd5e1; color:#334155;"
+        };
+    }
 }

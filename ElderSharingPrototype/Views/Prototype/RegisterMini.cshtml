@@ -10,6 +10,8 @@
                                       "רמה 3 – שיתוף גבוה";
 
     var hmoList = ViewBag.HmoList as List<string> ?? new List<string> { "כללית", "מכבי", "מאוחדת", "לאומית" };
+    var meds = ViewBag.MedCatalog as List<string> ?? new List<string>();
+    var selectedMeds = Model.SelectedMedications ?? new List<string>();
 }
 
 <div class="container py-4" style="max-width: 900px;">
@@ -26,9 +28,6 @@
         <a class="btn btn-outline-primary btn-lg" href="/Prototype/Choose" style="font-size:20px;">שינוי רמת שיתוף</a>
     </div>
 
-    @* =======================
-       רמה 1 (A) — אין פרטים למלא
-       ======================= *@
     @if (level == "A")
     {
         <div class="card p-3">
@@ -44,33 +43,29 @@
     }
     else
     {
-        @* =======================
-           רמה 2 (B) ורמה 3 (C)
-           ======================= *@
-
         <form asp-controller="Prototype" asp-action="RegisterMini" method="post" class="mt-3">
             @Html.AntiForgeryToken()
 
-            <div asp-validation-summary="All" class="text-danger mb-3" style="font-size:16px;"></div>
+            <div asp-validation-summary="ModelOnly" class="text-danger mb-3" style="font-size:16px;"></div>
 
             <div class="row g-3">
 
                 <div class="col-12 col-md-6">
                     <label class="form-label" style="font-size:18px;">מספר טלפון</label>
                     <input asp-for="Phone1" class="form-control form-control-lg" placeholder="לדוגמה: 0521234567" />
-                    <span asp-validation-for="Phone1" class="text-danger"></span>
+                    <span asp-validation-for="Phone1" class="text-danger d-block mt-1"></span>
                 </div>
 
                 <div class="col-12 col-md-6">
                     <label class="form-label" style="font-size:18px;">מספר טלפון נוסף (אופציונלי)</label>
                     <input asp-for="Phone2" class="form-control form-control-lg" placeholder="אופציונלי" />
-                    <span asp-validation-for="Phone2" class="text-danger"></span>
+                    <span asp-validation-for="Phone2" class="text-danger d-block mt-1"></span>
                 </div>
 
                 <div class="col-12 col-md-6">
                     <label class="form-label" style="font-size:18px;">ת״ז אישי</label>
                     <input asp-for="PersonalIdNumber" class="form-control form-control-lg" maxlength="9" placeholder="9 ספרות" />
-                    <span asp-validation-for="PersonalIdNumber" class="text-danger"></span>
+                    <span asp-validation-for="PersonalIdNumber" class="text-danger d-block mt-1"></span>
                 </div>
 
                 <div class="col-12 col-md-6">
@@ -82,26 +77,22 @@
                             <option value="@h">@h</option>
                         }
                     </select>
-                    <span asp-validation-for="Hmo" class="text-danger"></span>
+                    <span asp-validation-for="Hmo" class="text-danger d-block mt-1"></span>
                 </div>
 
                 <hr class="my-3" />
-
-                @{
-                    var meds = ViewBag.MedCatalog as List<string> ?? new List<string>();
-                }
 
                 <div class="col-12">
                     <label class="form-label" style="font-size:18px;">רשימת תרופות</label>
 
                     <select asp-for="SelectedMedications"
-                            asp-items="@(new MultiSelectList(meds, Model.SelectedMedications))"
+                            asp-items="@(new MultiSelectList(meds, selectedMeds))"
                             class="form-select form-select-lg"
                             multiple="multiple"
                             id="medSelect">
                     </select>
 
-                    <span asp-validation-for="SelectedMedications" class="text-danger"></span>
+                    <span asp-validation-for="SelectedMedications" class="text-danger d-block mt-1"></span>
 
                     <div class="form-text" style="font-size:16px;">
                         התחילי להקליד כדי לצמצם את הרשימה.
@@ -127,7 +118,7 @@
                             <input class="form-check-input" type="checkbox" asp-for="MicConsent" id="micConsent" />
                             <label class="form-check-label" for="micConsent">אני מאשר/ת הפעלת מיקרופון</label>
                         </div>
-                        <span asp-validation-for="MicConsent" class="text-danger"></span>
+                        <span asp-validation-for="MicConsent" class="text-danger d-block mt-1"></span>
                     </div>
 
                     <div class="col-12 col-md-6">
@@ -135,7 +126,7 @@
                             <input class="form-check-input" type="checkbox" asp-for="CameraConsent" id="cameraConsent" />
                             <label class="form-check-label" for="cameraConsent">אני מאשר/ת הפעלת מצלמה</label>
                         </div>
-                        <span asp-validation-for="CameraConsent" class="text-danger"></span>
+                        <span asp-validation-for="CameraConsent" class="text-danger d-block mt-1"></span>
                     </div>
 
                     <div class="alert alert-warning mt-2" style="font-size:18px;">
@@ -154,7 +145,6 @@
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />
 
-    <!-- Select2 CDN -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 

@@ -352,7 +352,7 @@ namespace ElderSharingPrototype.Controllers
         new PharmacyBranchViewModel
         {
             City = "באר שבע",
-            BranchName = "בית מרקחת כללית מרכז הנגב",
+            BranchName = "בית מרקחת מרכז הנגב",
             PhoneNumber = "08-6345678",
             Address = "ויצמן 15, באר שבע"
         },
@@ -366,7 +366,7 @@ namespace ElderSharingPrototype.Controllers
         new PharmacyBranchViewModel
         {
             City = "אשקלון",
-            BranchName = "בית מרקחת מכבי אשקלון",
+            BranchName = "בית מרקחת אשקלון",
             PhoneNumber = "08-6856789",
             Address = "ההסתדרות 5, אשקלון"
         },
@@ -380,7 +380,7 @@ namespace ElderSharingPrototype.Controllers
         new PharmacyBranchViewModel
         {
             City = "תל אביב",
-            BranchName = "בית מרקחת כללית אבן גבירול",
+            BranchName = "בית מרקחת אבן גבירול",
             PhoneNumber = "03-6234567",
             Address = "אבן גבירול 110, תל אביב"
         },
@@ -394,7 +394,7 @@ namespace ElderSharingPrototype.Controllers
         new PharmacyBranchViewModel
         {
             City = "קריית גת",
-            BranchName = "בית מרקחת מאוחדת קריית גת",
+            BranchName = "בית מרקחת קריית גת",
             PhoneNumber = "08-6654321",
             Address = "שדרות לכיש 7, קריית גת"
         }
@@ -529,6 +529,7 @@ namespace ElderSharingPrototype.Controllers
 
             ViewBag.Level = Level;
             ViewBag.MeasurementsMode = oneTimeMode ? "onetime" : "history";
+            ViewBag.UiAdaptation = HttpContext.Session.GetInt32("UiAdaptation") ?? (int)UiAdaptation.NotAdapted;
 
             // מסך חד־פעמי: אין היסטוריה בכלל
             if (oneTimeMode)
@@ -545,7 +546,7 @@ namespace ElderSharingPrototype.Controllers
         }
 
         [HttpPost]
-        public IActionResult PullDeviceMeasurements(string? scenario, string? mode)
+        public IActionResult PullDeviceMeasurements(string? mode)
         {
             if (Level != "B" && Level != "C")
                 return Json(new { ok = false, message = "Service available only for Level B/C" });
@@ -567,74 +568,138 @@ namespace ElderSharingPrototype.Controllers
                     historyMode = true;
             }
 
-            // משתמש ברמה B לא יכול לשמור היסטוריה
             if (Level == "B")
             {
                 oneTimeMode = true;
                 historyMode = false;
             }
 
-            var sc = (scenario ?? "normal").Trim().ToLowerInvariant();
+            // 0 = תקין, 1 = גבולי, 2 = לא תקין
+            int scenario = Random.Shared.Next(0, 3);
 
             int systolic, diastolic, sugar;
 
-            if (sc == "high")
+            if (scenario == 0)
             {
-                systolic = Random.Shared.Next(150, 185);
-                diastolic = Random.Shared.Next(95, 115);
-                sugar = Random.Shared.Next(190, 260);
+                // תקין
+                systolic = Random.Shared.Next(110, 130);
+                diastolic = Random.Shared.Next(70, 85);
+                sugar = Random.Shared.Next(85, 141);
+            }
+            else if (scenario == 1)
+            {
+                // גבולי
+                systolic = Random.Shared.Next(130, 140);
+                diastolic = Random.Shared.Next(85, 90);
+                sugar = Random.Shared.Next(141, 181);
             }
             else
             {
-                systolic = Random.Shared.Next(105, 136);
-                diastolic = Random.Shared.Next(65, 86);
-                sugar = Random.Shared.Next(80, 141);
+                // לא תקין
+                systolic = Random.Shared.Next(145, 181);
+                diastolic = Random.Shared.Next(95, 116);
+                sugar = Random.Shared.Next(190, 261);
             }
 
-            var nowLocal = DateTime.Now;
+            string bpStatus = GetBloodPressureStatus(systolic, diastolic);
+            string sugarStatus = GetSugarStatus(sugar);
+
+            string overallStatus = GetOverallStatus(bpStatus, sugarStatus);
+            string overallMessage = GetOverallMessage(overallStatus);
+
+            var nowLocal = IsraelTime.Now();
             var nowUtc = DateTime.UtcNow;
 
-            if (oneTimeMode)
+            if (!oneTimeMode)
             {
-                return Json(new
+                _db.VitalMeasurements.Add(new VitalMeasurementEntity
                 {
-                    ok = true,
-                    mode = "oneTime",
-                    measuredAt = nowLocal.ToString("dd/MM/yyyy HH:mm"),
-                    bloodPressure = new { systolic, diastolic },
-                    sugar = new { mgDl = sugar }
+                    ParticipantId = pid.Value,
+                    Kind = "BloodPressure",
+                    Systolic = systolic,
+                    Diastolic = diastolic,
+                    Notes = $"התקבל אוטומטית מהמכשיר (WiFi) – דמו | מצב: {bpStatus}",
+                    MeasuredAt = nowUtc
                 });
+
+                _db.VitalMeasurements.Add(new VitalMeasurementEntity
+                {
+                    ParticipantId = pid.Value,
+                    Kind = "Sugar",
+                    SugarMgDl = sugar,
+                    Notes = $"התקבל אוטומטית מהמכשיר (WiFi) – דמו | מצב: {sugarStatus}",
+                    MeasuredAt = nowUtc
+                });
+
+                _db.SaveChanges();
             }
-
-            _db.VitalMeasurements.Add(new VitalMeasurementEntity
-            {
-                ParticipantId = pid.Value,
-                Kind = "BloodPressure",
-                Systolic = systolic,
-                Diastolic = diastolic,
-                Notes = "התקבל אוטומטית מהמכשיר (WiFi) – דמו",
-                MeasuredAt = nowUtc
-            });
-
-            _db.VitalMeasurements.Add(new VitalMeasurementEntity
-            {
-                ParticipantId = pid.Value,
-                Kind = "Sugar",
-                SugarMgDl = sugar,
-                Notes = "התקבל אוטומטית מהמכשיר (WiFi) – דמו",
-                MeasuredAt = nowUtc
-            });
-
-            _db.SaveChanges();
 
             return Json(new
             {
                 ok = true,
-                mode = "saved",
+                mode = oneTimeMode ? "oneTime" : "saved",
                 measuredAt = nowLocal.ToString("dd/MM/yyyy HH:mm"),
-                bloodPressure = new { systolic, diastolic },
-                sugar = new { mgDl = sugar }
+
+                bloodPressure = new
+                {
+                    systolic,
+                    diastolic,
+                    status = bpStatus
+                },
+
+                sugar = new
+                {
+                    mgDl = sugar,
+                    status = sugarStatus
+                },
+
+                overallStatus,
+                overallMessage
             });
+        }
+
+        private static string GetBloodPressureStatus(int systolic, int diastolic)
+        {
+            if (systolic >= 140 || diastolic >= 90 || systolic < 90 || diastolic < 60)
+                return "לא תקין";
+
+            if ((systolic >= 130 && systolic <= 139) || (diastolic >= 85 && diastolic <= 89))
+                return "גבולי";
+
+            return "תקין";
+        }
+
+        private static string GetSugarStatus(int sugar)
+        {
+            if (sugar > 180 || sugar < 70)
+                return "לא תקין";
+
+            if ((sugar >= 141 && sugar <= 180) || (sugar >= 70 && sugar <= 79))
+                return "גבולי";
+
+            return "תקין";
+        }
+
+        private static string GetOverallStatus(string bpStatus, string sugarStatus)
+        {
+            if (bpStatus == "לא תקין" || sugarStatus == "לא תקין")
+                return "לא תקין";
+
+            if (bpStatus == "גבולי" || sugarStatus == "גבולי")
+                return "גבולי";
+
+            return "תקין";
+        }
+
+        private static string GetOverallMessage(string overallStatus)
+        {
+            return overallStatus switch
+            {
+                "תקין" => "המדדים תקינים.",
+                "גבולי" => "המדדים בטווח גבולי. מומלץ לעקוב.",
+                "לא תקין" => "המדדים אינם תקינים. מומלץ לשים לב ולפנות לייעוץ במקרה הצורך.",
+                _ => ""
+            };
         }
 
         [HttpPost]
@@ -674,7 +739,9 @@ namespace ElderSharingPrototype.Controllers
             if (!pid.HasValue) return RedirectToAction("Login", "Experiment");
 
             var list = _db.AppointmentRequests
-                .Where(x => x.ParticipantId == pid.Value)
+                .Where(x =>
+                    x.ParticipantId == pid.Value &&
+                    x.TreatmentArea != "רופא (TeleVisit)")
                 .OrderByDescending(x => x.CreatedAtUtc)
                 .ToList();
 
@@ -685,7 +752,8 @@ namespace ElderSharingPrototype.Controllers
                 Reason = x.Reason,
                 PreferredDate = x.PreferredDate,
                 PreferredTime = x.PreferredTime,
-                Notes = x.Notes ?? ""
+                Notes = x.Notes ?? "",
+                CreatedAt = x.CreatedAtUtc.ToLocalTime()
             }).ToList();
 
             return View();
@@ -700,30 +768,114 @@ namespace ElderSharingPrototype.Controllers
             var pid = GetParticipantId();
             if (!pid.HasValue) return RedirectToAction("Login", "Experiment");
 
-            if (string.IsNullOrWhiteSpace(treatmentArea))
-                ModelState.AddModelError("treatmentArea", "נא לבחור תחום טיפול.");
-            if (string.IsNullOrWhiteSpace(reason))
-                ModelState.AddModelError("reason", "נא לציין סיבה.");
-            if (string.IsNullOrWhiteSpace(preferredDate))
-                ModelState.AddModelError("preferredDate", "נא לבחור תאריך.");
-            if (string.IsNullOrWhiteSpace(preferredTime))
-                ModelState.AddModelError("preferredTime", "נא לבחור שעה.");
+            bool hasError = false;
 
-            if (!ModelState.IsValid)
+            if (string.IsNullOrWhiteSpace(treatmentArea))
+            {
+                TempData["AppointmentTreatmentAreaError"] = "נא לבחור תחום טיפול.";
+                hasError = true;
+            }
+
+            if (string.IsNullOrWhiteSpace(preferredDate))
+            {
+                TempData["AppointmentPreferredDateError"] = "נא לבחור תאריך מועדף.";
+                hasError = true;
+            }
+
+            if (string.IsNullOrWhiteSpace(preferredTime))
+            {
+                TempData["AppointmentPreferredTimeError"] = "נא לבחור שעה מועדפת.";
+                hasError = true;
+            }
+
+            var nowIsrael = IsraelTime.Now();
+
+            if (!string.IsNullOrWhiteSpace(preferredDate) && !string.IsNullOrWhiteSpace(preferredTime))
+            {
+                if (DateTime.TryParse($"{preferredDate} {preferredTime}", out var preferredDateTime))
+                {
+                    if (preferredDateTime < nowIsrael)
+                    {
+                        TempData["AppointmentPreferredDateError"] = "לא ניתן לבחור תאריך או שעה שכבר עברו.";
+                        hasError = true;
+                    }
+                }
+                else
+                {
+                    TempData["AppointmentPreferredDateError"] = "התאריך או השעה אינם תקינים.";
+                    hasError = true;
+                }
+            }
+
+            if (hasError)
                 return RedirectToAction(nameof(AppointmentRequest));
 
             _db.AppointmentRequests.Add(new AppointmentRequestEntity
             {
                 ParticipantId = pid.Value,
                 TreatmentArea = treatmentArea.Trim(),
-                Reason = reason.Trim(),
+                Reason = (reason ?? "").Trim(),   // אופציונלי
                 PreferredDate = preferredDate.Trim(),
                 PreferredTime = preferredTime.Trim(),
-                Notes = (notes ?? "").Trim()
+                Notes = (notes ?? "").Trim()      // אופציונלי
             });
+
             _db.SaveChanges();
 
+            TempData["AppointmentOk"] = "בקשת התור נשמרה בהצלחה.";
             return RedirectToAction(nameof(AppointmentRequest));
+        }
+
+        [HttpGet]
+        public IActionResult DueDoctorAppointmentReminder()
+        {
+            var pid = GetParticipantId();
+            if (!pid.HasValue)
+                return Json(new { ok = false, message = "Not logged in" });
+
+            var nowIsrael = IsraelTime.Now();
+            var nowMinute = nowIsrael.ToString("yyyy-MM-dd HH:mm");
+
+            var appointments = _db.AppointmentRequests
+                .AsNoTracking()
+                .Where(x =>
+                    x.ParticipantId == pid.Value &&
+                    x.TreatmentArea != "רופא (TeleVisit)")
+                .ToList();
+
+            foreach (var item in appointments)
+            {
+                if (!DateTime.TryParse($"{item.PreferredDate} {item.PreferredTime}", out var appointmentDateTime))
+                    continue;
+
+                var appointmentMinute = appointmentDateTime.ToString("yyyy-MM-dd HH:mm");
+
+                // רק בדיוק בדקה של התור
+                if (appointmentMinute == nowMinute)
+                {
+                    string preferredDateText = item.PreferredDate;
+                    if (DateTime.TryParse(item.PreferredDate, out var parsedDate))
+                    {
+                        preferredDateText = parsedDate.ToString("dd/MM/yyyy");
+                    }
+
+                    var reasonText = string.IsNullOrWhiteSpace(item.Reason)
+                        ? ""
+                        : $"\nסיבה: {item.Reason}";
+
+                    return Json(new
+                    {
+                        ok = true,
+                        due = true,
+                        appointmentId = item.Id,
+                        title = "תזכורת לתור לרופא",
+                        body = $"הגיע הזמן לתור שנקבע.\nתחום טיפול: {item.TreatmentArea}\nתאריך: {preferredDateText}\nשעה: {item.PreferredTime}{reasonText}",
+                        startsAt = appointmentDateTime.ToString("dd/MM/yyyy HH:mm")
+                    });
+                }
+            }
+
+            return Json(new { ok = true, due = false });
         }
 
         [HttpPost]
@@ -921,6 +1073,13 @@ namespace ElderSharingPrototype.Controllers
             if (string.IsNullOrWhiteSpace(date) || string.IsNullOrWhiteSpace(time))
                 return Json(new { ok = false, message = "Date/time is required" });
 
+            if (!DateTime.TryParse($"{date} {time}", out var preferredDateTime))
+                return Json(new { ok = false, message = "Invalid date/time" });
+
+            var nowIsrael = IsraelTime.Now();
+            if (preferredDateTime < nowIsrael)
+                return Json(new { ok = false, message = "לא ניתן להזמין תור בזמן שכבר עבר." });
+
             var entity = new AppointmentRequestEntity
             {
                 ParticipantId = pid.Value,
@@ -970,34 +1129,103 @@ namespace ElderSharingPrototype.Controllers
             if (!pid.HasValue) return RedirectToAction("Login", "Experiment");
 
             var list = _db.AppointmentRequests
-                .Where(x => x.ParticipantId == pid.Value)
+                .Where(x => x.ParticipantId == pid.Value && x.TreatmentArea == "רופא (TeleVisit)")
                 .AsNoTracking()
                 .ToList();
 
-            var upcoming = new List<AppointmentRequestEntity>();
-            foreach (var a in list)
-            {
-                DateTime dt;
-                var dateStr = (a.PreferredDate ?? "").Trim();
-                var timeStr = (a.PreferredTime ?? "").Trim();
-
-                if (DateTime.TryParse($"{dateStr} {timeStr}", out dt))
-                {
-                    if (dt >= DateTime.Now.AddMinutes(-5))
-                        upcoming.Add(a);
-                }
-                else
-                {
-                    upcoming.Add(a);
-                }
-            }
-
-            ViewBag.Upcoming = upcoming
+            ViewBag.Upcoming = list
                 .OrderBy(x => x.PreferredDate)
                 .ThenBy(x => x.PreferredTime)
                 .ToList();
 
             return View();
+        }
+
+        [HttpGet]
+        public IActionResult DueTeleVisitReminder()
+        {
+            var pid = GetParticipantId();
+            if (!pid.HasValue)
+                return Json(new { ok = false, message = "Not logged in" });
+
+            var nowIsrael = IsraelTime.Now();
+            var minuteKey = nowIsrael.ToString("yyyy-MM-dd HH:mm");
+            var lastKey = HttpContext.Session.GetString("LastTeleVisitReminderMinuteKey");
+
+            if (lastKey == minuteKey)
+            {
+                return Json(new { ok = true, due = false });
+            }
+
+            var teleVisits = _db.AppointmentRequests
+                .AsNoTracking()
+                .Where(x => x.ParticipantId == pid.Value)
+                .ToList()
+                .Where(x =>
+                    !string.IsNullOrWhiteSpace(x.Notes) &&
+                    (
+                        x.Notes!.Trim().ToLower().Contains("video") ||
+                        x.Notes!.Trim().ToLower().Contains("phone") ||
+                        x.Notes!.Trim().Contains("ויד") ||
+                        x.Notes!.Trim().Contains("טלפ")
+                    ))
+                .ToList();
+
+            foreach (var item in teleVisits)
+            {
+                if (!DateTime.TryParse($"{item.PreferredDate} {item.PreferredTime}", out var appointmentDateTime))
+                    continue;
+
+                var diffMinutes = (int)Math.Floor((nowIsrael - appointmentDateTime).TotalMinutes);
+
+                if (diffMinutes >= 0 && diffMinutes <= 5)
+                {
+                    HttpContext.Session.SetString("LastTeleVisitReminderMinuteKey", minuteKey);
+
+                    var visitType = (item.Notes ?? "").Trim().ToLowerInvariant();
+                    var visitTypeText = visitType.Contains("video") || visitType.Contains("ויד")
+                        ? "תור וידיאו"
+                        : "תור טלפוני";
+
+                    string preferredDateText = item.PreferredDate;
+                    if (DateTime.TryParse(item.PreferredDate, out var parsedDate))
+                    {
+                        preferredDateText = parsedDate.ToString("dd/MM/yyyy");
+                    }
+
+                    return Json(new
+                    {
+                        ok = true,
+                        due = true,
+                        appointmentId = item.Id,
+                        title = "תזכורת לתור לרופא",
+                        body = $"{visitTypeText} מוכן להתחלה.\nתאריך: {preferredDateText}\nשעה: {item.PreferredTime}",
+                        startsAt = appointmentDateTime.ToString("dd/MM/yyyy HH:mm")
+                    });
+                }
+            }
+
+            return Json(new { ok = true, due = false });
+        }
+
+        [HttpPost]
+        public IActionResult FinishTeleVisit(Guid id)
+        {
+            if (Level != "C")
+                return Json(new { ok = false, message = "Service available only for Level C" });
+
+            var pid = GetParticipantId();
+            if (!pid.HasValue)
+                return Json(new { ok = false, message = "Not logged in" });
+
+            var item = _db.AppointmentRequests.FirstOrDefault(x => x.Id == id && x.ParticipantId == pid.Value);
+            if (item == null)
+                return Json(new { ok = false, message = "Appointment not found" });
+
+            _db.AppointmentRequests.Remove(item);
+            _db.SaveChanges();
+
+            return Json(new { ok = true });
         }
 
         // ------------------------------------------------------------
@@ -1065,10 +1293,10 @@ namespace ElderSharingPrototype.Controllers
             if (!pid.HasValue)
                 return Json(new { ok = false, message = "Not logged in" });
 
-            var nowLocal = DateTime.Now;
-            var hhmm = nowLocal.ToString("HH:mm");
+            var nowIsrael = IsraelTime.Now();
+            var hhmm = nowIsrael.ToString("HH:mm");
 
-            var minuteKey = nowLocal.ToString("yyyy-MM-dd HH:mm");
+            var minuteKey = nowIsrael.ToString("yyyy-MM-dd HH:mm");
             var lastKey = HttpContext.Session.GetString("LastReminderMinuteKey");
 
             if (lastKey == minuteKey)
@@ -1096,7 +1324,13 @@ namespace ElderSharingPrototype.Controllers
                 HttpContext.Session.SetString("LastReminderMinuteKey", minuteKey);
             }
 
-            return Json(new { ok = true, now = hhmm, due });
+            return Json(new
+            {
+                ok = true,
+                now = hhmm,
+                nowFull = nowIsrael.ToString("dd/MM/yyyy HH:mm:ss"),
+                due
+            });
         }
     }
 }

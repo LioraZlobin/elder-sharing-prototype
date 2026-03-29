@@ -1,4 +1,5 @@
-﻿using System;
+﻿using ElderSharingPrototype.Helpers;
+using System;
 
 namespace ElderSharingPrototype.Models.Health
 {
@@ -13,6 +14,6 @@ namespace ElderSharingPrototype.Models.Health
         public string PreferredTime { get; set; } = ""; // "10:30"
 
         public string Notes { get; set; } = "";
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = IsraelTime.Now();
     }
 }

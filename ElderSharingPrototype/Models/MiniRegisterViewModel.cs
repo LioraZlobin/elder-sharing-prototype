@@ -9,7 +9,8 @@
         public string? Phone2 { get; set; }             // טלפון נוסף (אופציונלי)
 
         // תרופות
-        public List<string> SelectedMedications { get; set; } = new();
+        // חשוב: nullable כדי למנוע הודעת required אוטומטית באנגלית
+        public List<string>? SelectedMedications { get; set; }
         public string? FixedMedications { get; set; }
 
         // איש קשר לחירום (B + C)

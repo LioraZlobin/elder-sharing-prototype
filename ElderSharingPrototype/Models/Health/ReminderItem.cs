@@ -26,6 +26,6 @@ namespace ElderSharingPrototype.Models.Health
         public string Notes { get; set; } = "";
 
         // תאריך יצירה
-        public DateTime CreatedAt { get; set; } = DateTime.Now;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

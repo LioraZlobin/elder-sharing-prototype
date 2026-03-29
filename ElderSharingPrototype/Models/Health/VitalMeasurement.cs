@@ -9,7 +9,7 @@ namespace ElderSharingPrototype.Models.Health
         public int? Systolic { get; set; }      // ל"ד עליון
         public int? Diastolic { get; set; }     // ל"ד תחתון
         public int? SugarMgDl { get; set; }     // סוכר
-        public DateTime MeasuredAt { get; set; } = DateTime.Now;
+        public DateTime MeasuredAt { get; set; } = DateTime.UtcNow;
         public string Notes { get; set; } = "";
     }
 }

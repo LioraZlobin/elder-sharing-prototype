@@ -14,17 +14,14 @@
 </head>
 
 @{
-        // UiAdaptation נשמר ב-Session
         var ui = Context.Session.GetInt32("UiAdaptation") ?? (int)UiAdaptation.NotAdapted;
         bool isAdapted = ui == (int)UiAdaptation.Adapted;
 
         var isLoggedIn = Context.Session.GetString("IsLoggedIn") == "true";
         var firstName = Context.Session.GetString("FirstName") ?? "";
 
-        // ✅ חשוב: זה מה שמפעיל את כל ה-CSS של body.ui-adapted גם בדפי Health
         var bodyClass = isAdapted ? "ui-adapted medical-bg" : "ui-plain";
 
-        // (רשות) שהדיסקליימר העליון יגדל יחד עם הממשק
         var disclaimerStyle = isAdapted
                 ? "font-size: 32px; line-height: 1.8;"
                 : "font-size: 18px;";
@@ -32,7 +29,6 @@
 
 <body class="@bodyClass">
 
-    <!-- ✅ Wrapper חדש בשביל Sticky Footer -->
     <div class="page-wrapper">
 
         <header>
@@ -73,18 +69,12 @@
             </nav>
         </header>
 
-        <!-- ✅ main מקבל flex:1 דרך CSS -->
         <main role="main" class="content pb-3">
             <div class="container">
-                <div class="alert alert-light border text-center mb-3" style="@disclaimerStyle">
-                    איננו שומרים מידע מעבר לנדרש.
-                </div>
-
                 @RenderBody()
             </div>
         </main>
 
-        <!-- ✅ footer תמיד בתחתית -->
         <footer class="border-top footer text-muted">
             <div class="container text-center">
                 &copy; 2025 - ElderSharingPrototype -
@@ -115,19 +105,62 @@
         </div>
     </div>
 
+    <!-- ✅ TeleVisit Reminder Modal (global) -->
+    <div class="modal fade" id="teleVisitReminderModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius:18px;">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="teleVisitReminderTitle">📞 תזכורת לתור</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="סגור"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="teleVisitReminderBody" style="font-size:18px; line-height:1.6; white-space:pre-line;"></div>
+                </div>
+                <div class="modal-footer">
+                    <a href="/Health/TeleVisit" class="btn btn-primary">מעבר לתור</a>
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">סגור</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- ✅ Doctor appointment Reminder Modal (global) -->
+    <div class="modal fade" id="doctorAppointmentReminderModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="border-radius:18px;">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="doctorAppointmentReminderTitle">🩺 תזכורת לתור לרופא</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="סגור"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="doctorAppointmentReminderBody" style="font-size:18px; line-height:1.6; white-space:pre-line;"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-success" data-bs-dismiss="modal">הבנתי ✅</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script src="~/lib/jquery/dist/jquery.min.js"></script>
     <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
     <script src="~/js/site.js" asp-append-version="true"></script>
 
-    <!-- ✅ Global Reminder Checker (NO refresh needed) -->
     <script>
         (function () {
             const isLoggedIn = "@(isLoggedIn ? "true" : "false")";
             if (isLoggedIn !== "true") return;
 
-            const MODAL_ID = "reminderModal";
-            const STORAGE_KEY = "lastReminderShownAt"; // נשמור "yyyy-MM-dd HH:mm" כדי לא להקפיץ פעמיים באותה דקה
+            const REMINDER_MODAL_ID = "reminderModal";
+            const TELE_VISIT_MODAL_ID = "teleVisitReminderModal";
+            const DOCTOR_APPOINTMENT_MODAL_ID = "doctorAppointmentReminderModal";
+
+            const STORAGE_KEY = "lastReminderShownAt";
+            const TELE_VISIT_STORAGE_KEY = "lastTeleVisitReminderShownAt";
+            const DOCTOR_APPOINTMENT_STORAGE_KEY = "lastDoctorAppointmentReminderShownAt";
+
             let isChecking = false;
+            let isCheckingTeleVisit = false;
+            let isCheckingDoctorAppointment = false;
 
             function getNowMinuteKey() {
                 const d = new Date();
@@ -136,24 +169,24 @@
                     " " + pad(d.getHours()) + ":" + pad(d.getMinutes());
             }
 
-            function alreadyShownThisMinute() {
+            function alreadyShownThisMinute(storageKey) {
                 try {
-                    const key = localStorage.getItem(STORAGE_KEY) || "";
+                    const key = localStorage.getItem(storageKey) || "";
                     return key === getNowMinuteKey();
                 } catch (e) {
                     return false;
                 }
             }
 
-            function markShownThisMinute() {
+            function markShownThisMinute(storageKey) {
                 try {
-                    localStorage.setItem(STORAGE_KEY, getNowMinuteKey());
+                    localStorage.setItem(storageKey, getNowMinuteKey());
                 } catch (e) { }
             }
 
             async function checkReminders(force = false) {
                 if (isChecking) return;
-                if (!force && alreadyShownThisMinute()) return;
+                if (!force && alreadyShownThisMinute(STORAGE_KEY)) return;
 
                 isChecking = true;
 
@@ -168,7 +201,7 @@
                     if (!data || !data.ok) return;
                     if (!data.due || data.due.length === 0) return;
 
-                    if (!force) markShownThisMinute();
+                    if (!force) markShownThisMinute(STORAGE_KEY);
 
                     const lines = data.due.map(x => {
                         let extra = "";
@@ -192,18 +225,117 @@
                         window.speechSynthesis.speak(u);
                     } catch (e) { }
 
-                    const modalEl = document.getElementById(MODAL_ID);
+                    const modalEl = document.getElementById(REMINDER_MODAL_ID);
                     if (!modalEl) return;
 
                     const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
                     modal.show();
 
                 } catch (e) {
-                    // שקט
                 } finally {
                     isChecking = false;
                 }
             }
+
+            async function checkTeleVisitReminder(force = false) {
+                if (isCheckingTeleVisit) return;
+                if (!force && alreadyShownThisMinute(TELE_VISIT_STORAGE_KEY)) return;
+
+                isCheckingTeleVisit = true;
+
+                try {
+                    const resp = await fetch("/Health/DueTeleVisitReminder", {
+                        method: "GET",
+                        cache: "no-store",
+                        headers: { "X-Requested-With": "fetch" }
+                    });
+
+                    const data = await resp.json();
+                    if (!data || !data.ok) return;
+                    if (!data.due) return;
+
+                    if (!force) markShownThisMinute(TELE_VISIT_STORAGE_KEY);
+
+                    const titleEl = document.getElementById("teleVisitReminderTitle");
+                    const bodyEl = document.getElementById("teleVisitReminderBody");
+
+                    if (!titleEl || !bodyEl) return;
+
+                    titleEl.innerText = "📞 תזכורת לתור לרופא";
+                    bodyEl.innerText = data.body || "הגיע הזמן לתור שלך.";
+
+                    try {
+                        window.speechSynthesis.cancel();
+                        const u = new SpeechSynthesisUtterance("הגיע הזמן לתור לרופא.");
+                        u.lang = "he-IL";
+                        window.speechSynthesis.speak(u);
+                    } catch (e) { }
+
+                    const modalEl = document.getElementById(TELE_VISIT_MODAL_ID);
+                    if (!modalEl) return;
+
+                    const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                    modal.show();
+
+                } catch (e) {
+                } finally {
+                    isCheckingTeleVisit = false;
+                }
+            }
+
+        async function checkDoctorAppointmentReminder(force = false) {
+            if (isCheckingDoctorAppointment) return;
+
+            isCheckingDoctorAppointment = true;
+
+            try {
+                const resp = await fetch("/Health/DueDoctorAppointmentReminder", {
+                    method: "GET",
+                    cache: "no-store",
+                    headers: { "X-Requested-With": "fetch" }
+                });
+
+                const data = await resp.json();
+                if (!data || !data.ok) return;
+                if (!data.due || !data.appointmentId) return;
+
+                const shownKey = "doctorAppointmentReminderShown_" + data.appointmentId;
+
+                try {
+                    const alreadyShown = localStorage.getItem(shownKey);
+                    if (alreadyShown === "true") return;
+                } catch (e) { }
+
+                const titleEl = document.getElementById("doctorAppointmentReminderTitle");
+                const bodyEl = document.getElementById("doctorAppointmentReminderBody");
+
+                if (!titleEl || !bodyEl) return;
+
+                titleEl.innerText = "🩺 תזכורת לתור לרופא";
+                bodyEl.innerText = data.body || "הגיע הזמן לתור שנקבע.";
+
+                try {
+                    localStorage.setItem(shownKey, "true");
+                } catch (e) { }
+
+                try {
+                    window.speechSynthesis.cancel();
+                    const u = new SpeechSynthesisUtterance("הגיע הזמן לתור שנקבע אצל הרופא.");
+                    u.lang = "he-IL";
+                    window.speechSynthesis.speak(u);
+                } catch (e) { }
+
+                const modalEl = document.getElementById(DOCTOR_APPOINTMENT_MODAL_ID);
+                if (!modalEl) return;
+
+                const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+                modal.show();
+
+            } catch (e) {
+            } finally {
+                isCheckingDoctorAppointment = false;
+            }
+        }
 
             function scheduleAligned() {
                 const now = new Date();
@@ -212,16 +344,27 @@
 
                 setTimeout(() => {
                     checkReminders(true);
-                    setInterval(() => checkReminders(true), 60 * 1000);
+                    checkTeleVisitReminder(true);
+                    checkDoctorAppointmentReminder(true);
+
+                    setInterval(() => {
+                        checkReminders(true);
+                        checkTeleVisitReminder(true);
+                        checkDoctorAppointmentReminder(true);
+                    }, 60 * 1000);
                 }, msToNextMinute);
             }
 
             checkReminders(true);
+            checkTeleVisitReminder(true);
+            checkDoctorAppointmentReminder(true);
             scheduleAligned();
 
             document.addEventListener("visibilitychange", function () {
                 if (document.visibilityState === "visible") {
                     checkReminders(true);
+                    checkTeleVisitReminder(true);
+                    checkDoctorAppointmentReminder(true);
                 }
             });
 
