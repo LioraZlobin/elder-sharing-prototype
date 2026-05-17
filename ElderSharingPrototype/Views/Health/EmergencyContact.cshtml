@@ -6,9 +6,6 @@
 <div class="container py-4" style="max-width: 950px;">
     <h1 class="mb-3">איש קשר והודעת חירום</h1>
 
-    <div class="alert alert-info" style="font-size:18px;">
-        ברמה 2 ומעלה ניתן לשמור פרטי איש קשר לחירום, ולהכין או לשלוח הודעת טקסט במקרה חירום.
-    </div>
 
     @if (TempData["SavedOk"] != null)
     {
@@ -67,15 +64,15 @@
             </div>
 
             <div class="col-12">
-                <label asp-for="Address" class="form-label" style="font-size:18px;">כתובת / מיקום</label>
-                <input asp-for="Address" class="form-control form-control-lg" placeholder="כתובת נוכחית / מיקום" />
+                <label asp-for="Address" class="form-label" style="font-size:18px;">כתובת איש קשר</label>
+                <input asp-for="Address" class="form-control form-control-lg" placeholder="כתובת נוכחית" />
                 <span asp-validation-for="Address" class="text-danger"></span>
             </div>
 
             <div class="col-12">
-                <label asp-for="MessageText" class="form-label" style="font-size:18px;">בחרי הודעת חירום מוכנה</label>
+                <label asp-for="MessageText" class="form-label" style="font-size:18px;">בחר/י הודעת חירום מוכנה</label>
                 <select asp-for="MessageText" class="form-select form-select-lg">
-                    <option value="">בחרי הודעה</option>
+                    <option value="">בחר/י הודעה</option>
                     <option value="מקרה חירום, אנא צרו איתי קשר בהקדם.">מקרה חירום, אנא צרו איתי קשר בהקדם.</option>
                     <option value="אני זקוקה לעזרה דחופה, אנא התקשרו אליי.">אני זקוקה לעזרה דחופה, אנא התקשרו אליי.</option>
                     <option value="אני לא מרגישה טוב, בבקשה צרו איתי קשר בהקדם האפשרי.">אני לא מרגישה טוב, בבקשה צרו איתי קשר בהקדם האפשרי.</option>

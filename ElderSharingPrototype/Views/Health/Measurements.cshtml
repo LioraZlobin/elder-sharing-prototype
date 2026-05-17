@@ -37,7 +37,6 @@
     @if (!isHistoryMode)
     {
         <div class="alert alert-warning" style="font-size:18px;">
-            <strong>תצוגה חד־פעמית:</strong>
             המדדים נטענים אוטומטית מהמכשירים דרך WiFi ומוצגים על המסך בלבד.
             <br />
             <u>המדדים לא נשמרים</u> ואינם מופיעים בהיסטוריה.
@@ -52,15 +51,13 @@
     }
 
     <div class="card p-3 mb-3" style="border-radius:16px;">
-        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-            <div>
-                <div class="device-title">סטטוס חיבור מכשירים</div>
-                <div class="text-muted device-subtitle">הדמיה של מכשירים המחוברים ל-WiFi ומדווחים לרובוט</div>
-            </div>
+        <div class="text-center">
 
-            <div class="d-flex gap-2 flex-wrap">
-                <button id="btnAutoRead" type="button" class="btn btn-success btn-lg">
-                    📶 התחל קריאה אוטומטית (דמו)
+            <div class="mt-4 text-center">
+                <button id="btnAutoRead"
+                        type="button"
+                        class="btn btn-success btn-lg">
+                    📶 התחל קריאה אוטומטית
                 </button>
             </div>
         </div>
@@ -116,7 +113,7 @@
         <hr class="my-4" />
 
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
-            <h2 class="h4 mb-0">היסטוריית מדידות (נשמר במסד נתונים)</h2>
+            <h2 class="h4 mb-0">היסטוריית מדידות</h2>
 
             <form method="post" action="/Health/DeleteMeasurementsHistory" class="m-0"
                   onsubmit="return confirm('האם למחוק את כל היסטוריית המדדים?');">
@@ -157,7 +154,9 @@
 
                                     @if (!string.IsNullOrWhiteSpace(m.Notes))
                                     {
-                                        <div style="margin-top:6px;">@m.Notes</div>
+                                        <div style="margin-top:6px;">
+                                            @m.Notes.Replace("דמו", "")
+                                        </div>
                                     }
                                 </div>
                             }
@@ -169,6 +168,7 @@
             <div class="col-12 col-md-6">
                 <div class="card p-3 h-100" style="border-radius:16px;">
                     <h3 class="h5 mb-3">סוכר</h3>
+
 
                     @if (!sugarHistory.Any())
                     {
@@ -194,10 +194,12 @@
                                         מצב: @sugarStatus
                                     </div>
 
-                                    @if (!string.IsNullOrWhiteSpace(m.Notes))
-                                    {
-                                        <div style="margin-top:6px;">@m.Notes</div>
-                                    }
+                                @if (!string.IsNullOrWhiteSpace(m.Notes))
+                                {
+                                    <div style="margin-top:6px;">
+                                        @m.Notes.Replace("דמו", "")
+                                    </div>
+                                }
                                 </div>
                             }
                         </div>
@@ -371,7 +373,7 @@
                 resultEl.style.background = "#fee2e2";
                 resultEl.style.border = "2px solid #ef4444";
                 resultEl.style.color = "#991b1b";
-                resultEl.innerHTML = "נסי שוב בעוד רגע. (דמו)";
+                resultEl.innerHTML = "נסי שוב בעוד רגע.";
 
                 btnAutoRead.disabled = false;
                 running = false;

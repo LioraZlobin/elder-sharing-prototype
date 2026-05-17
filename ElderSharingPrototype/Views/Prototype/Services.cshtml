@@ -420,12 +420,12 @@
 
     .extra-services-btn {
         width: 100%;
-        text-align: right;
+        text-align: center;
         font-weight: 800;
         background: #fff;
         border: none;
         padding: 18px 22px;
-        font-size: 22px;
+        font-size: 30px;
     }
 
     .locked-level-title {
@@ -484,29 +484,38 @@
 <div class="container py-4" style="max-width: 1380px;">
 
     <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+
         <div>
             <h1 class="mb-2" style="@titleStyle">שירותים רפואיים</h1>
+        </div>
+
+        <div class="d-flex flex-column align-items-end">
+
+            <a class="btn btn-outline-primary btn-lg"
+               href="/Prototype/Choose"
+               style="@btnStyle">
+                שינוי רמת שיתוף
+            </a>
 
             @if (withExplanation)
             {
-                <p class="text-muted mb-0" style="@textStyle">
-                    רמת השיתוף שנבחרה: <strong>@levelText</strong>
-                </p>
+                <div class="alert alert-success text-center mt-3 mb-0"
+                     style="font-size:20px;
+                            font-weight:700;
+                            border-radius:14px;
+                            padding:14px;">
+
+                    רמת השיתוף שנבחרה:
+                    <strong>@levelText</strong>
+
+                </div>
             }
+
         </div>
 
-        <a class="btn btn-outline-primary btn-lg" href="/Prototype/Choose" style="@btnStyle">
-            שינוי רמת שיתוף
-        </a>
     </div>
 
     <div class="d-flex gap-2 flex-wrap mt-3">
-        @if (level != "C")
-        {
-            <a class="btn btn-primary btn-lg" style="@btnStyle" href="/Prototype/Choose">
-                רוצה להוסיף עוד שירותים?
-            </a>
-        }
 
         <form method="post" action="/Prototype/DeleteMyData" class="m-0">
             <button type="submit" class="btn btn-outline-danger btn-lg" style="@dangerBtnStyle">
@@ -556,13 +565,9 @@
     } *@
 
     <div class="mb-3">
-        <div style="font-weight:800; font-size:28px; margin-bottom:10px;">
-            בחר את השירות המועדף עליך
-        </div>
 
         <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
             <h2 class="services-board-title m-0" style="font-size:30px;">השירותים שלי</h2>
-            <span class="text-muted" style="@textStyle">השירותים הפתוחים עבורך, מסודרים לפי נושאים</span>
         </div>
     </div>
 

@@ -3,20 +3,19 @@
 @using Microsoft.AspNetCore.Http
 
 @{
-    ViewData["Title"] = "בחירת רמת שיתוף";
+    ViewData["Title"] = "ברוכים הבאים";
 
     var explanationMode = (ExplanationMode)(ViewBag.ExplanationMode ?? (int)ExplanationMode.WithExplanation);
 
-    // ✅ לקרוא מה-Session כדי שלא יהיה תלוי ב-Controller
     var ui = Context.Session.GetInt32("UiAdaptation") ?? (int)UiAdaptation.NotAdapted;
     bool isAdapted = ui == (int)UiAdaptation.Adapted;
 
     bool withExplanation = explanationMode == ExplanationMode.WithExplanation;
 
     var titleStyle = isAdapted ? "font-size:46px;" : "font-size:30px;";
-    var textStyle = isAdapted ? "font-size:22px;" : "font-size:16px;";
+    var textStyle = isAdapted ? "font-size:22px; line-height:1.7;" : "font-size:16px; line-height:1.6;";
     var btnStyle = isAdapted ? "font-size:24px; padding:16px;" : "font-size:18px;";
-    var cardStyle = isAdapted ? "font-size:20px;" : "font-size:16px;";
+    var cardStyle = isAdapted ? "font-size:20px; line-height:1.7;" : "font-size:16px; line-height:1.6;";
 
     var iconStyle = isAdapted
         ? "position:absolute; top:14px; right:14px; width:58px; height:58px;"
@@ -24,7 +23,6 @@
 
     var headerStyle = isAdapted ? "padding-right:74px;" : "";
 
-    // Same colors as Intro (רק במותאם)
     var level1Bg = "#fde7ea";
     var level1Border = "#f6b7c0";
     var level1IconColor = "#e53935";
@@ -37,10 +35,12 @@
     var level3Border = "#b7e4c7";
     var level3IconColor = "#43a047";
 
-    string CardBox(string bg, string border) => $"background:{bg}; border:2px solid {border}; border-radius:18px;";
+    string CardBox(string bg, string border)
+        => $"background:{bg}; border:2px solid {border}; border-radius:18px;";
 }
 
 @functions {
+
     private static string ShieldBase(string tintColorHex, string innerSvg)
     {
         return $@"
@@ -68,164 +68,270 @@
     public static IHtmlContent PrivacyIcon(string colorHex)
     {
         var inner = $@"
-  <g>
-    <path d='M25 29 v-4 c0-4 3-7 7-7 s7 3 7 7 v4' fill='none' stroke='{colorHex}' stroke-width='3.2' stroke-linecap='round'/>
-    <rect x='22.5' y='29' width='19' height='15.5' rx='3' fill='{colorHex}'/>
-    <circle cx='32' cy='37' r='2.1' fill='white' opacity='0.95'/>
-  </g>";
+<g>
+    <path d='M25 29 v-4 c0-4 3-7 7-7 s7 3 7 7 v4'
+          fill='none'
+          stroke='{colorHex}'
+          stroke-width='3.2'
+          stroke-linecap='round'/>
+
+    <rect x='22.5' y='29'
+          width='19'
+          height='15.5'
+          rx='3'
+          fill='{colorHex}'/>
+
+    <circle cx='32' cy='37' r='2.1' fill='white'/>
+</g>";
+
         return new HtmlString(ShieldBase(colorHex, inner));
     }
 
     public static IHtmlContent SharingIcon140(string colorHex)
     {
         var inner = $@"
-  <g transform='translate(-2,0) scale(1.12)'>
-    <path d='M28 30 L36 26' stroke='{colorHex}' stroke-width='3' stroke-linecap='round'/>
-    <path d='M28 30 L36 34' stroke='{colorHex}' stroke-width='3' stroke-linecap='round'/>
+<g transform='translate(-2,0) scale(1.12)'>
+
+    <path d='M28 30 L36 26'
+          stroke='{colorHex}'
+          stroke-width='3'
+          stroke-linecap='round'/>
+
+    <path d='M28 30 L36 34'
+          stroke='{colorHex}'
+          stroke-width='3'
+          stroke-linecap='round'/>
+
     <circle cx='24.5' cy='30' r='4.2' fill='{colorHex}'/>
     <circle cx='39.5' cy='25' r='4.2' fill='{colorHex}'/>
     <circle cx='39.5' cy='35' r='4.2' fill='{colorHex}'/>
-    <circle cx='24.5' cy='30' r='1.2' fill='white' opacity='0.95'/>
-    <circle cx='39.5' cy='25' r='1.2' fill='white' opacity='0.95'/>
-    <circle cx='39.5' cy='35' r='1.2' fill='white' opacity='0.95'/>
-  </g>";
+
+</g>";
+
         return new HtmlString(ShieldBase(colorHex, inner));
     }
 
     public static IHtmlContent SelfDisplayIcon95(string colorHex)
     {
         var inner = $@"
-  <g fill='none'
-     stroke='{colorHex}'
-     stroke-width='2.6'
-     stroke-linecap='round'
-     stroke-linejoin='round'
-     transform='translate(0,0) scale(1.05)'>
-    <circle cx='32' cy='25' r='4.3' />
-    <circle cx='23.5' cy='26.5' r='3.7' />
-    <circle cx='40.5' cy='26.5' r='3.7' />
-    <path d='M24 40 c2.8-6.3 13.2-6.3 16 0' />
-    <path d='M15.5 40 c2.0-5.0 9.5-5.0 11.2 0' />
-    <path d='M37.3 40 c2.0-5.0 9.5-5.0 11.2 0' />
-  </g>";
+<g fill='none'
+   stroke='{colorHex}'
+   stroke-width='2.6'
+   stroke-linecap='round'
+   stroke-linejoin='round'
+   transform='translate(0,0) scale(1.05)'>
+
+    <circle cx='32' cy='25' r='4.3'/>
+    <circle cx='23.5' cy='26.5' r='3.7'/>
+    <circle cx='40.5' cy='26.5' r='3.7'/>
+
+    <path d='M24 40 c2.8-6.3 13.2-6.3 16 0'/>
+    <path d='M15.5 40 c2.0-5.0 9.5-5.0 11.2 0'/>
+    <path d='M37.3 40 c2.0-5.0 9.5-5.0 11.2 0'/>
+
+</g>";
+
         return new HtmlString(ShieldBase(colorHex, inner));
     }
 }
 
-<div class="container py-4" style="max-width: 1000px;">
-    <h1 class="mb-2" style="@titleStyle">בחירת רמת שיתוף</h1>
+<div class="container py-4" style="max-width: 1100px;">
 
-    @if (withExplanation)
-    {
-        <p class="text-muted mb-4" style="@textStyle">בחרו את הרמה שמתאימה לכם. אפשר לשנות בכל רגע.</p>
-    }
+    <h1 class="mb-3" style="@titleStyle">
+        ברוכים הבאים – בחירת רמת שיתוף
+    </h1>
 
-    <div class="row g-3">
+
+    <div class="row g-4">
 
         <!-- רמה 1 -->
         <div class="col-12 col-md-4">
-            <div class="card h-100" style="@(isAdapted? CardBox(level1Bg, level1Border) : "")">
-                <div class="card-body d-flex flex-column position-relative" style="@cardStyle">
+
+            <div class="card h-100"
+                 style="@(isAdapted? CardBox(level1Bg, level1Border) : "")">
+
+                <div class="card-body d-flex flex-column position-relative"
+                     style="@cardStyle">
 
                     @if (isAdapted)
                     {
-                        <span aria-hidden="true" style="@iconStyle">
+                        <span style="@iconStyle">
                             @PrivacyIcon(level1IconColor)
                         </span>
                     }
 
-                    <h2 class="h5" style="@(isAdapted? headerStyle : "")">רמה 1 – פרטיות גבוהה</h2>
+                    <h2 class="h4 mb-3"
+                        style="@(isAdapted? headerStyle : "")">
 
-                    @if (withExplanation)
-                    {
-                        <p class="text-muted"></p>
-                        <ul class="mt-2">
-                            <li>נדרש רק מספר סידורי (ללא מידע רפואי אישי)</li>
-                            <li>תזכורת כללית ללקיחת תרופות</li>
-                            <li>תזכורת כללית למדדים: לחץ דם, דופק, סוכר</li>
-                            <li>המלצה לביקור רופא / בדיקות שגרתיות</li>
-                            <li>התרעה קולית במצבי חריגה או סיכון סביבתי</li>
-                        </ul>
-                    }
+                        רמה 1 – פרטיות גבוהה
+
+                    </h2>
+
+                    <p><strong>המידע הנדרש:</strong></p>
+
+                    <ul>
+                        <li>מספר סידורי בלבד</li>
+                        <li>ללא מידע רפואי אישי</li>
+                    </ul>
+
+                    <p class="mt-3">
+                        <strong>השירותים שמקבלים בתמורה:</strong>
+                    </p>
+
+                    <ul>
+                        <li>תזכורת כללית לתרופות</li>
+                        <li>תזכורת למדדים רפואיים</li>
+                        <li>המלצה לבדיקות שגרתיות</li>
+                        <li>התראות קוליות במצבי חריגה</li>
+                    </ul>
 
                     <form method="post" class="mt-auto">
+
                         <input type="hidden" name="level" value="A" />
-                        <button type="submit" class="btn btn-outline-primary w-100 btn-lg" style="@btnStyle">בחר רמה זו</button>
+
+                        <button type="submit"
+                                class="btn btn-outline-primary w-100 btn-lg"
+                                style="@btnStyle">
+
+                            בחר רמה זו
+
+                        </button>
+
                     </form>
+
                 </div>
+
             </div>
+
         </div>
 
         <!-- רמה 2 -->
         <div class="col-12 col-md-4">
-            <div class="card h-100" style="@(isAdapted? CardBox(level2Bg, level2Border) : "")">
-                <div class="card-body d-flex flex-column position-relative" style="@cardStyle">
+
+            <div class="card h-100"
+                 style="@(isAdapted? CardBox(level2Bg, level2Border) : "")">
+
+                <div class="card-body d-flex flex-column position-relative"
+                     style="@cardStyle">
 
                     @if (isAdapted)
                     {
-                        <span aria-hidden="true" style="@iconStyle">
+                        <span style="@iconStyle">
                             @SharingIcon140(level2IconColor)
                         </span>
                     }
 
-                    <h2 class="h5" style="@(isAdapted? headerStyle : "")">רמה 2 – שיתוף בינוני</h2>
+                    <h2 class="h4 mb-3"
+                        style="@(isAdapted? headerStyle : "")">
 
-                    @if (withExplanation)
-                    {
-                        <p class="text-muted"></p>
-                        <ul class="mt-2">
-                            <li>מילוי פרטים בסיסיים: ת"ז, תרופות קבועות, טלפון, קופת חולים</li>
-                            <li>תזכורות לנטילת תרופות כולל שם התרופה</li>
-                            <li>ניהול רשימת תרופות קבועות</li>
-                            <li>זימון תור לרופא לפי תחום טיפול</li>
-                            <li>איש קשר + יצירת קשר טקסטואלי במקרה חירום</li>
-                        </ul>
-                    }
+                        רמה 2 – שיתוף בינוני
+
+                    </h2>
+
+                    <p><strong>המידע הנדרש:</strong></p>
+
+                    <ul>
+                        <li>תעודת זהות</li>
+                        <li>טלפון</li>
+                        <li>קופת חולים</li>
+                        <li>תרופות קבועות</li>
+                    </ul>
+
+                    <p class="mt-3">
+                        <strong>השירותים שמקבלים בתמורה:</strong>
+                    </p>
+
+                    <ul>
+                        <li>תזכורות מותאמות לתרופות</li>
+                        <li>ניהול תרופות קבועות</li>
+                        <li>זימון תורים לרופא</li>
+                        <li>יצירת קשר טקסטואלי בחירום</li>
+                    </ul>
 
                     <form method="post" class="mt-auto">
+
                         <input type="hidden" name="level" value="B" />
-                        <button type="submit" class="btn btn-outline-primary w-100 btn-lg" style="@btnStyle">בחר רמה זו</button>
+
+                        <button type="submit"
+                                class="btn btn-outline-primary w-100 btn-lg"
+                                style="@btnStyle">
+
+                            בחר רמה זו
+
+                        </button>
+
                     </form>
+
                 </div>
+
             </div>
+
         </div>
 
         <!-- רמה 3 -->
         <div class="col-12 col-md-4">
-            <div class="card h-100" style="@(isAdapted? CardBox(level3Bg, level3Border) : "")">
-                <div class="card-body d-flex flex-column position-relative" style="@cardStyle">
+
+            <div class="card h-100"
+                 style="@(isAdapted? CardBox(level3Bg, level3Border) : "")">
+
+                <div class="card-body d-flex flex-column position-relative"
+                     style="@cardStyle">
 
                     @if (isAdapted)
                     {
-                        <span aria-hidden="true" style="@iconStyle">
+                        <span style="@iconStyle">
                             @SelfDisplayIcon95(level3IconColor)
                         </span>
                     }
 
-                    <h2 class="h5" style="@(isAdapted? headerStyle : "")">רמה 3 – שיתוף גבוה</h2>
+                    <h2 class="h4 mb-3"
+                        style="@(isAdapted? headerStyle : "")">
 
-                    @if (withExplanation)
-                    {
-                        <p class="text-muted"></p>
-                        <ul class="mt-2">
-                            <li>ניהול ומעקב רפואי מלא</li>
-                            <li>תור טלפוני ו/או וידאו</li>
-                            <li>איש קשר + יצירת קשר חזותי במקרה חירום</li>
-                            <li>מצלמה ומיקרופון מופעלים רק באישור</li>
-                        </ul>
-                    }
+                        רמה 3 – שיתוף גבוה
+
+                    </h2>
+
+                    <p><strong>המידע הנדרש:</strong></p>
+
+                    <ul>
+                        <li>תעודת זהות</li>
+                        <li>טלפון</li>
+                        <li>קופת חולים</li>
+                        <li>תרופות קבועות</li>
+                        <li>אישור שימוש במצלמה ומיקרופון</li>
+                    </ul>
+
+                    <p class="mt-3">
+                        <strong>השירותים שמקבלים בתמורה:</strong>
+                    </p>
+
+                    <ul>
+                        <li>ניהול ומעקב רפואי מלא</li>
+                        <li>שיחות וידאו/טלפון</li>
+                        <li>קשר חזותי בחירום</li>
+                        <li>שירותים רפואיים מתקדמים</li>
+                    </ul>
 
                     <form method="post" class="mt-auto">
+
                         <input type="hidden" name="level" value="C" />
-                        <button type="submit" class="btn btn-outline-primary w-100 btn-lg" style="@btnStyle">בחר רמה זו</button>
+
+                        <button type="submit"
+                                class="btn btn-outline-primary w-100 btn-lg"
+                                style="@btnStyle">
+
+                            בחר רמה זו
+
+                        </button>
+
                     </form>
+
                 </div>
+
             </div>
+
         </div>
 
     </div>
 
-    <div class="mt-4 d-grid gap-2">
-        <a class="btn btn-link" href="/Prototype/Intro" style="@textStyle">חזרה</a>
-    </div>
 </div>

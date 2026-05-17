@@ -14,9 +14,9 @@ namespace ElderSharingPrototype.Controllers
         }
 
         public IActionResult Index()
-{
-    return RedirectToAction("Intro", "Prototype");
-}
+        {
+             return RedirectToAction("Choose", "Prototype");
+        }
 
         public IActionResult Privacy()
         {

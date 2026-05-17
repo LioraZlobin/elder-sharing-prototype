@@ -321,3 +321,24 @@ body.ui-adapted .card .btn {
     body.ui-adapted .card .btn:hover {
         transform: translateY(-1px);
     }
+
+/* שדות שגיאה */
+
+.input-validation-error,
+select.input-validation-error {
+    border: 3px solid #e53935 !important;
+    background-color: #fff3f3 !important;
+    box-shadow: 0 0 0 4px rgba(229, 57, 53, 0.15);
+    transition: all 0.2s ease;
+}
+
+
+/* טקסט שגיאה */
+
+.field-validation-error {
+    color: #d32f2f !important;
+    font-weight: bold;
+    font-size: 18px;
+    margin-top: 6px;
+    display: block;
+}

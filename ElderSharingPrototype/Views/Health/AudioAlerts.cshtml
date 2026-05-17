@@ -46,10 +46,6 @@
 
     <h1 class="mb-3" style="@titleStyle">התראה קולית (דמו)</h1>
 
-    <div class="alert alert-info" style="@alertStyle">
-        זהו דמו. אין כאן חיבור לחיישנים אמיתיים.
-    </div>
-
     <div class="card" style="@cardStyle">
         <h2 class="h5 mb-3" style="@h2Style">דוגמה להתראות:</h2>
 
@@ -65,9 +61,6 @@
         </audio>
 
         <div class="d-flex flex-wrap gap-2 mt-2">
-            <button type="button" class="btn btn-outline-secondary btn-lg" onclick="unlockAudio()">
-                פתיחת קול (אם לא עובד)
-            </button>
 
             <button type="button" class="btn btn-primary btn-lg" onclick="playAlert()">
                 הפעל התרעה קולית
@@ -76,9 +69,6 @@
 
         <div id="statusBox" class="alert alert-warning mt-3" style="display:none; @statusStyle"></div>
 
-        <div class="text-muted mt-2" style="@mutedStyle">
-            אם לא נשמע קול: ודאי שהדפדפן לא על Mute, נסי Chrome/Edge, ולחצי קודם על "פתיחת קול".
-        </div>
     </div>
 
     <div class="mt-4">

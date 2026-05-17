@@ -138,19 +138,6 @@ namespace ElderSharingPrototype.Controllers
             };
         }
 
-        // -----------------------------
-        // Intro
-        // -----------------------------
-        public IActionResult Intro()
-        {
-            var pid = GetParticipantId();
-            if (pid == null)
-                return RedirectToAction("Login", "Experiment");
-
-            SetUiFlagsToViewBag();
-            LogAction(pid.Value, "View:Intro");
-            return View();
-        }
 
         // -----------------------------
         // Choose
@@ -597,7 +584,7 @@ namespace ElderSharingPrototype.Controllers
             }
 
             LogAction(pid.Value, "DeleteMyData", "All personal data cleared");
-            return RedirectToAction("Intro", "Prototype");
+            return RedirectToAction("Choose", "Prototype");
         }
 
         [HttpPost]

@@ -18,11 +18,6 @@
     <h1 class="mb-2">הגדרות לפי רמת שיתוף</h1>
     <p class="text-muted mb-4" style="font-size:18px;">רמת השיתוף שנבחרה: <strong>@levelText</strong></p>
 
-    <div class="alert alert-info" style="font-size:18px;">
-        נבקש רק את הפרטים הנחוצים לרמה שבחרת.
-        <br />
-        אפשר להעלות או להוריד רמת שיתוף בכל רגע.
-    </div>
 
     <div class="d-grid gap-2 mb-3">
         <a class="btn btn-outline-primary btn-lg" href="/Prototype/Choose" style="font-size:20px;">שינוי רמת שיתוף</a>
@@ -52,19 +47,19 @@
 
                 <div class="col-12 col-md-6">
                     <label class="form-label" style="font-size:18px;">מספר טלפון</label>
-                    <input asp-for="Phone1" class="form-control form-control-lg" placeholder="לדוגמה: 0521234567" />
+                    <input asp-for="Phone1" class="form-control form-control-lg" />
                     <span asp-validation-for="Phone1" class="text-danger d-block mt-1"></span>
                 </div>
 
                 <div class="col-12 col-md-6">
                     <label class="form-label" style="font-size:18px;">מספר טלפון נוסף (אופציונלי)</label>
-                    <input asp-for="Phone2" class="form-control form-control-lg" placeholder="אופציונלי" />
+                    <input asp-for="Phone2" class="form-control form-control-lg" />
                     <span asp-validation-for="Phone2" class="text-danger d-block mt-1"></span>
                 </div>
 
                 <div class="col-12 col-md-6">
                     <label class="form-label" style="font-size:18px;">ת״ז אישי</label>
-                    <input asp-for="PersonalIdNumber" class="form-control form-control-lg" maxlength="9" placeholder="9 ספרות" />
+                    <input asp-for="PersonalIdNumber" class="form-control form-control-lg" maxlength="9" />
                     <span asp-validation-for="PersonalIdNumber" class="text-danger d-block mt-1"></span>
                 </div>
 
@@ -94,23 +89,14 @@
 
                     <span asp-validation-for="SelectedMedications" class="text-danger d-block mt-1"></span>
 
-                    <div class="form-text" style="font-size:16px;">
-                        התחילי להקליד כדי לצמצם את הרשימה.
-                    </div>
                 </div>
 
-                <div class="alert alert-info mt-3" style="font-size:18px;">
-                    הנתונים נשמרים רק במערכת לצורך תפעול השירותים ברמת השיתוף שבחרת.
-                </div>
 
                 @if (level == "C")
                 {
                     <hr class="my-3" />
                     <div class="col-12">
                         <h2 class="h5 mb-2">אישור גישה למצלמה ומיקרופון</h2>
-                        <p class="text-muted" style="font-size:16px;">
-                            כדי לאפשר תור וידיאו ויצירת קשר חזותי במקרה חירום.
-                        </p>
                     </div>
 
                     <div class="col-12 col-md-6">
@@ -127,10 +113,6 @@
                             <label class="form-check-label" for="cameraConsent">אני מאשר/ת הפעלת מצלמה</label>
                         </div>
                         <span asp-validation-for="CameraConsent" class="text-danger d-block mt-1"></span>
-                    </div>
-
-                    <div class="alert alert-warning mt-2" style="font-size:18px;">
-                        תוכל/י להוריד רמת שיתוף בכל רגע.
                     </div>
                 }
             </div>
@@ -151,7 +133,6 @@
     <script>
         $(document).ready(function () {
             $('#medSelect').select2({
-                placeholder: "בחר/י תרופות מהרשימה",
                 width: '100%',
                 dir: "rtl"
             });

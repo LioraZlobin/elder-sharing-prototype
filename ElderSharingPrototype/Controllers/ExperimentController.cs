@@ -121,7 +121,7 @@ public class ExperimentController : Controller
             return RedirectToAction("Services", "Prototype");
         }
 
-        return RedirectToAction("Intro", "Prototype");
+        return RedirectToAction("Choose", "Prototype");
     }
 
     private void SetOrRemove(string key, string? value)
